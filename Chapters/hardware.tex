@@ -1,0 +1,152 @@
+% Píše: backend.
+\chapter{Hardware a~zapojení}
+\label{chap:hardware}
+
+Domek je sestavený z~modulů na nepájivém poli, které jsou připojené k~Raspberry Pi 3B+.
+Raspberry Pi má čtyřjádrový 64bitový procesor Broadcom BCM2837B0 s~frekvencí 1,4~GHz, vestavěný
+Bluetooth 4.2 s~podporou BLE a~rozšířenou 40pinovou lištu GPIO; napájí se zdrojem 5~V přes
+konektor micro-USB a~výrobce uvádí proud 2,5~A~\cite{rpi3bplus}.
+
+\section{Součástky}
+\label{sec:soucastky}
+
+Tabulka~\ref{tab:soucastky} shrnuje součástky konečné sestavy. Čísla GPIO jsou v~číslování
+BCM (Broadcom), které používá i~program; fyzické piny lišty jsou v~tabulce~\ref{tab:zapojeni}.
+
+\begin{table}[H]
+\centering
+\caption{Součástky domku}
+\label{tab:soucastky}
+\small
+\begin{tabular}{|p{3.2cm}|p{3.9cm}|p{3.3cm}|p{2.5cm}|}
+\hline
+\textbf{Součástka} & \textbf{Úloha v~domku} & \textbf{Rozhraní} & \textbf{Napájení} \\
+\hline
+Raspberry Pi 3B+ & řídicí jednotka, periferie BLE & -- & 5~V, micro-USB \\
+\hline
+BMP280 (prodávaný jako BME280) & venkovní teplota a~tlak & I\textsuperscript{2}C, adresa
+  \kod{0x76} & 3,3~V \\
+\hline
+TSL2561 & venkovní osvětlení & I\textsuperscript{2}C, adresa \kod{0x39} & 3,3~V \\
+\hline
+displej SSD1306, OLED 128~$\times$~64 bodů & stav domku & I\textsuperscript{2}C, adresa
+  \kod{0x3C} & 3,3~V \\
+\hline
+HC-SR501 & čidlo pohybu (PIR) & vstup GPIO24 & 5~V, výstup 3,3~V \\
+\hline
+modul LED semafor & kontrolky topení, chlazení a~pohybu & výstupy GPIO17, GPIO27, GPIO22 &
+  z~výstupů GPIO \\
+\hline
+RGB LED se společnou katodou & světlo domku & výstupy PWM GPIO16, GPIO20, GPIO21 & z~výstupů
+  GPIO přes rezistory \\
+\hline
+\end{tabular}
+\end{table}
+
+Čidla měří skutečné hodnoty v~místnosti, kde sestava stojí, a~v~simulaci zastupují venkovní
+prostředí (kapitola~\ref{chap:navrh}). Barvu a~jas RGB LED řídí pulzně šířková modulace (PWM).
+Modul LED semafor má tři LED: červená ukazuje topení, zelená chlazení a~oranžová (prostřední)
+pohyb.
+
+\section{Zapojení}
+\label{sec:zapojeni}
+
+Tabulka~\ref{tab:zapojeni} uvádí zapojení podle fyzických pinů lišty Raspberry Pi. Piny, které
+v~tabulce nejsou, zůstávají volné.
+
+\begin{table}[H]
+\centering
+\caption{Zapojení podle fyzických pinů Raspberry Pi}
+\label{tab:zapojeni}
+\small
+\begin{tabular}{|p{1.0cm}|p{3.2cm}|p{9.0cm}|}
+\hline
+\textbf{Pin} & \textbf{Funkce pinu} & \textbf{Připojený vývod} \\
+\hline
+1 & 3,3~V & VCC modulů BMP280, TSL2561 a~SSD1306 \\
+\hline
+2 & 5~V & VCC čidla HC-SR501 \\
+\hline
+3 & GPIO2 (SDA) & SDA modulů BMP280, TSL2561 a~SSD1306 \\
+\hline
+5 & GPIO3 (SCL) & SCL modulů BMP280, TSL2561 a~SSD1306 \\
+\hline
+6 & GND & GND čidla HC-SR501 \\
+\hline
+9 & GND & GND modulů BMP280, TSL2561 a~SSD1306 \\
+\hline
+11 & GPIO17 & R modulu LED semafor (topení) \\
+\hline
+13 & GPIO27 & G modulu LED semafor (chlazení) \\
+\hline
+15 & GPIO22 & Y modulu LED semafor (pohyb) \\
+\hline
+18 & GPIO24 & OUT čidla HC-SR501 \\
+\hline
+20 & GND & GND modulu LED semafor \\
+\hline
+34 & GND & společná katoda RGB LED (nejdelší vývod) \\
+\hline
+36 & GPIO16 & červená anoda RGB LED přes rezistor \\
+\hline
+38 & GPIO20 & zelená anoda RGB LED přes rezistor \\
+\hline
+40 & GPIO21 & modrá anoda RGB LED přes rezistor \\
+\hline
+\end{tabular}
+\end{table}
+
+Všechny tři moduly I\textsuperscript{2}C sdílejí sběrnici číslo~1 na pinech~3 (SDA) a~5 (SCL),
+takže k~Raspberry Pi vedou jen dva datové vodiče. Adresy modulů se nepřekrývají. Raspberry Pi má
+na GPIO2 a~GPIO3 pevné rezistory 1,8~k$\Omega$ připojené k~napájení~\cite{rpi-hardware}. Po
+zapojení musí příkaz \kod{i2cdetect -y 1} na Raspberry Pi ukázat adresy \kod{39}, \kod{3c}
+a~\kod{76}.
+
+\section{Napájení}
+\label{sec:napajeni}
+
+Celá sestava se napájí z~Raspberry Pi, bez externího zdroje. Moduly I\textsuperscript{2}C mají
+napájení 3,3~V z~pinu~1. Na žádný pin GPIO ani na sběrnici I\textsuperscript{2}C se nesmí dostat
+5~V, jinak se Raspberry Pi poškodí. Jedinou součástkou napájenou z~5~V (pin~2) je čidlo pohybu
+HC-SR501. Jeho výstup OUT vede do GPIO24, proto se před připojením změřil multimetrem: při
+hlášení pohybu měl 3,3~V, takže ho jde připojit přímo. LED modulu semafor a~RGB LED svítí
+přímo z~výstupů GPIO, každá přes svůj rezistor.
+
+\section{Poznámky k~součástkám}
+\label{sec:poznamky-soucastky}
+
+\begin{description}
+  \item[BMP280 prodávaný jako BME280.] Čidlo bylo koupené jako BME280, ale v~registru ID čipu
+        \kod{0xD0} má hodnotu \kod{0x58}, kterou má BMP280~\cite{bmp280}. BME280 tam má
+        \kod{0x60}~\cite{bme280}. BMP280 měří teplotu a~tlak, vlhkost ne. Program typ čidla
+        pozná podle ID a~vlhkost hlásí jako neznámou (oddíl~\ref{sec:ovladace}). Čidlo má být
+        co nejdál od Raspberry Pi, které hřeje a~zkreslovalo by měření.
+  \item[TSL2561 nesmí mířit na RGB LED.] Čidlo osvětlení má vývod ADDR nezapojený, a~proto
+        adresu \kod{0x39}. Kdyby svítilo na čidlo světlo domku, automatika by se rozkmitala:
+        světlo se při šeru rozsvítí, čidlo naměří jeho světlo, šero skončí a~světlo zhasne.
+  \item[Nastavení HC-SR501.] Propojka je v~poloze H, takže výstup zůstává v~logické 1, dokud se
+        před čidlem někdo hýbe. Trimr doby je na minimu (výstup pak drží asi 3~s) a~trimr
+        citlivosti uprostřed. Po zapnutí napájení se čidlo asi minutu ustaluje a~může hlásit
+        pohyb samo. Čidlo má mířit tam, kde se při předvádění pohybují lidé.
+  \item[Dvoubarevný displej.] Horních 16 řádků bodů displeje SSD1306 svítí žlutě, zbytek jinou
+        barvou; rozložení textu se tomu přizpůsobuje (oddíl~\ref{sec:displej}).
+  \item[LED semafor.] Modul má ochranné rezistory přímo na desce, takže se jeho vývody R, G a~Y
+        zapojují přímo na GPIO. LED svítí v~logické 1.
+  \item[RGB LED.] Holá LED se čtyřmi vývody má společnou katodu (nejdelší vývod) na GND a~každá
+        barva má vlastní rezistor 220 až 330~$\Omega$; bez něj by LED přetížila výstup GPIO.
+        Ovladač počítá se společnou katodou, LED se společnou anodou nepodporuje.
+\end{description}
+
+\section{Vývoj sestavy}
+\label{sec:vyvoj-sestavy}
+
+Původní návrh počítal s~jinými díly: s~čidlem BME280, které měří i~vlhkost, s~čidlem osvětlení
+BH1750, s~kroužkem dvanácti adresovatelných LED WS2812B napájeným z~5~V přes převodník úrovní
+a~s~hodinami reálného času DS3231. Konečná sestava je jiná a~program se jí přizpůsobil.
+Místo BME280 přišel BMP280 bez čidla vlhkosti (viz výše) a~místo BH1750 je zapojené TSL2561,
+pro které program dostal vlastní ovladač. Kroužek WS2812B nahradila obyčejná RGB LED řízená PWM,
+která nepotřebuje převodník úrovní ani zvláštní knihovnu. Hodiny DS3231 v~sestavě nejsou:
+Raspberry Pi bere čas ze sítě protokolem NTP (Network Time Protocol) a~bez internetu ho nastaví
+tablet příkazem \kod{cas} (oddíl~\ref{sec:rozhrani-prikaz}). Kontrolky
+topení, chlazení a~pohybu obstarává modul LED semafor. Program dnes počítá jen s~konečnou
+sestavou a~volby pro jiné součástky nemá.

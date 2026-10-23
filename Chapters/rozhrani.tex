@@ -1,0 +1,441 @@
+% Píše: backend. Podklad: docs/ble-rozhrani.md v repozitáři backendu, ověřený testy proti kódu.
+\chapter{Komunikační rozhraní Bluetooth LE}
+\label{chap:rozhrani}
+
+Rozhraní je smlouva mezi programem na Raspberry Pi a~mobilní aplikací: obě strany se podle něj
+staví a~testují samostatně. Domek je periferie BLE a~server GATT, tablet je centrála a~klient
+GATT~\cite{bt-core}. Data se přenášejí ve třech charakteristikách vlastní služby Domek jako JSON
+a~venkovní hodnoty navíc ve standardní službě Environmental Sensing (ESS)~\cite{bt-ess}. Kapitola
+vychází z~dokumentu \kod{docs/ble-rozhrani.md} v~repozitáři backendu; testy v~souboru
+\kod{tests/test_ble_format.py} hlídají, že jeho UUID, klíče, výchozí hodnoty, rozsahy, názvy
+poruch a~příklady JSON odpovídají kódu.
+
+\section{Inzerce a~připojení}
+\label{sec:rozhrani-pripojeni}
+
+Domek se inzeruje pod názvem \kod{Termostat} a~v~inzerátu má jen krátké UUID služby
+Environmental Sensing \kod{0x181A}. Vlastní služba Domek má 128bitové UUID, které by se vedle
+názvu do reklamního paketu o~31 bajtech nevešlo; klient ji najde až po připojení při hledání
+služeb. Službu \kod{0x181A} může inzerovat i~jiné čidlo v~okolí, proto aplikace kontroluje, že
+název je přesně \kod{Termostat}. Párování ani šifrování není potřeba (důsledky popisuje
+oddíl~\ref{sec:zabezpeceni}).
+
+Výchozí MTU protokolu ATT je 23~B a~notifikace pak unese jen MTU~$-$~3, tedy 20~B
+dat~\cite{bt-core}. Stav má podle délky čísel a~počtu poruch asi 270 až 340~B a~notifikace se na
+části nedělí, jen se ořízne, takže by klient dostal neúplný JSON. Aplikace si proto hned po
+připojení vyžádá MTU 517, se kterým notifikace unese 514~B, tedy každý JSON domku. Hodnoty
+domku mají nejvýš 512~B, což je největší délka hodnoty atributu~\cite{bt-core}; nejmenší
+použitelné MTU je tedy 515. Čtení Stavu a~Nastavení funguje i~při menším MTU: klient si dlouhou
+hodnotu přečte po částech (čtení s~posunem) a~server všechny části vrací z~téže hodnoty
+(oddíl~\ref{sec:ble-server}). Zápis do 512~B se s~MTU 517 vejde do jednoho požadavku.
+
+Doporučený postup klienta po připojení je: vyžádat MTU 517, najít služby a~charakteristiky podle
+UUID, zapnout notifikace Stavu a~Nastavení zápisem do deskriptoru CCCD (Client Characteristic
+Configuration Descriptor, \kod{0x2902}) a~přečíst Nastavení, protože jeho notifikace chodí jen
+po zápisech (oddíl~\ref{sec:rozhrani-notifikace}). Po každém novém připojení se celý postup
+opakuje.
+
+\section{Služby a~charakteristiky}
+\label{sec:rozhrani-sluzby}
+
+Tabulka~\ref{tab:charakteristiky} uvádí obě služby. Šestnáctibitové UUID jsou zkrácené UUID
+přidělené organizací Bluetooth SIG~\cite{bt-assigned}: \kod{0xXXXX} znamená
+\kod{0000XXXX-0000-1000-8000-00805f9b34fb}. Zápis je vždy zápis s~odpovědí (v~Androidu
+\kod{WRITE_TYPE_DEFAULT}), aby se klient dozvěděl o~odmítnutí; zápis bez odpovědi
+charakteristiky nepodporují. Příkaz nejde číst ani odebírat.
+
+\begin{table}[H]
+\centering
+\caption{Služby a~charakteristiky domku}
+\label{tab:charakteristiky}
+\footnotesize
+\begin{tabular}{|p{2.7cm}|p{6.1cm}|p{2.1cm}|p{2.2cm}|}
+\hline
+\textbf{Charakteristika} & \textbf{UUID} & \textbf{Vlastnosti} & \textbf{Hodnota} \\
+\hline
+\multicolumn{4}{|l|}{\textbf{Environmental Sensing}, UUID \kod{0x181A}} \\
+\hline
+Teplota & \kod{0x2A6E} & read, notify & sint16, 0,01~°C \\
+\hline
+Vlhkost & \kod{0x2A6F} & read, notify & uint16, 0,01~\% \\
+\hline
+Tlak & \kod{0x2A6D} & read, notify & uint32, 0,1~Pa \\
+\hline
+\multicolumn{4}{|l|}{\textbf{Domek}, UUID \kod{5bf00001-f758-4c41-a34e-bab58ce87673}} \\
+\hline
+Stav & \kod{5bf00010-f758-4c41-a34e-bab58ce87673} & read, notify & JSON, UTF-8 \\
+\hline
+Nastavení & \kod{5bf00011-f758-4c41-a34e-bab58ce87673} & read, write, notify & JSON, UTF-8 \\
+\hline
+Příkaz & \kod{5bf00012-f758-4c41-a34e-bab58ce87673} & write & JSON, UTF-8 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Formát JSON}
+\label{sec:rozhrani-json}
+
+Stav, Nastavení i~Příkaz jsou JSON v~kódování UTF-8 bez BOM a~jejich kořenem je vždy objekt.
+Hodnota má nejvýš 512~bajtů (bajtů, ne znaků) a~delší zápis se odmítne; výchozí Nastavení má
+301~B a~nejdelší možné asi 383~B. Domek JSON kóduje kompaktně, bez mezer, a~nikdy do něj nezapíše
+\kod{NaN} ani \kod{Infinity}; při čtení zápisu přijme i~JSON s~mezerami. Ve Stavu jsou vždy
+všechny klíče a~hodnota, která není k~dispozici, je \kod{null}. Texty (úsek dne, režim, názvy
+poruch, slovní příkazy) jsou malými písmeny a~bez diakritiky, do čitelné podoby je převádí
+aplikace. Celá čísla (jas, složky barvy, \kod{nocni_svetlo_s}, \kod{nikdo_doma_po_min}) jsou vždy
+bez desetinné tečky, desetinná čísla mohou přijít i~bez desetinné části. Klient ignoruje klíče,
+které nezná, a~nespoléhá na jejich pořadí.
+
+\section{Stav}
+\label{sec:rozhrani-stav}
+
+Charakteristika Stav dává při čtení i~v~notifikaci celý aktuální stav domku
+(tabulka~\ref{tab:stav}). Odpovídá slovníku z~metody \kod{Domek.stav()}.
+
+\begin{table}[H]
+\centering
+\caption{Klíče Stavu}
+\label{tab:stav}
+\small
+\begin{tabular}{|p{2.3cm}|p{2.3cm}|p{1.7cm}|p{6.7cm}|}
+\hline
+\textbf{Klíč} & \textbf{Typ} & \textbf{Jednotka} & \textbf{Význam} \\
+\hline
+\kod{cas} & text, \kod{null} & -- & čas domku \kod{YYYY-MM-DDTHH:MM:SS}, místní, bez časového
+  pásma; \kod{null} jen před prvním krokem \\
+\hline
+\kod{usek} & text, \kod{null} & -- & \kod{den}, \kod{vecer} nebo \kod{noc} \\
+\hline
+\kod{t_venku} & číslo, \kod{null} & °C & venkovní teplota, 2 desetinná místa; \kod{null} při
+  poruše čidla \\
+\hline
+\kod{vlhkost} & číslo, \kod{null} & \% & venkovní vlhkost, 1 desetinné místo; \kod{null} při
+  poruše a~u~čidla BMP280 (oddíl~\ref{sec:poznamky-soucastky}) \\
+\hline
+\kod{tlak} & číslo, \kod{null} & hPa & venkovní tlak, 2 desetinná místa \\
+\hline
+\kod{lux} & číslo, \kod{null} & lx & osvětlení, 1 desetinné místo; \kod{null}, když čidlo nejde
+  přečíst \\
+\hline
+\kod{t_uvnitr} & číslo, \kod{null} & °C & simulovaná vnitřní teplota, 2 desetinná místa;
+  \kod{null} do prvního měření, při poruše drží poslední hodnotu \\
+\hline
+\kod{cil} & číslo, \kod{null} & °C & cíl, který termostat drží; \kod{null} v~režimu
+  \kod{vypnuto} \\
+\hline
+\kod{topi}, \kod{chladi} & boolean & -- & topení, chlazení běží; nikdy obojí zároveň \\
+\hline
+\kod{rezim} & text & -- & \kod{auto}, \kod{rucni} nebo \kod{vypnuto} \\
+\hline
+\kod{nikdo_doma} & boolean & -- & čidlo \kod{nikdo_doma_po_min} minut nezachytilo pohyb \\
+\hline
+\kod{pohyb} & boolean & -- & čidlo právě vidí pohyb \\
+\hline
+\kod{svetlo} & objekt & -- & stav světla: \kod{zap} (boolean), \kod{barva} (tři celá čísla 0
+  až 255), \kod{jas} (celé číslo 0 až 100) a~\kod{rucne} (boolean); vypnuté světlo má barvu
+  \kod{[0,0,0]} a~jas 0 \\
+\hline
+\kod{chyby} & pole textů & -- & trvající poruchy seřazené abecedně (tabulka~\ref{tab:chyby}) \\
+\hline
+\end{tabular}
+\end{table}
+
+Objekt \kod{svetlo} ukazuje, jak světlo \emph{má} svítit; \kod{rucne} je \kod{true}, když stav
+vybral člověk příkazem. Výpis~\ref{lst:stav-den} je Stav čtyřicet sekund po spuštění domku ve
+dne: venku je 14,5~°C, vnitřní teplota stoupá k~cíli 23~°C a~termostat topí. Další příklady jsou
+v~příloze~\ref{chap:priloha-json}.
+
+\begin{lstlisting}[language=json, caption={Stav ve dne, topí se (rozepsáno pro čitelnost)}, label=lst:stav-den]
+{
+  "cas": "2026-10-20T10:00:40",
+  "usek": "den",
+  "t_venku": 14.5,
+  "vlhkost": 61.3,
+  "tlak": 1008.4,
+  "lux": 420.5,
+  "t_uvnitr": 16.75,
+  "cil": 23.0,
+  "topi": true,
+  "chladi": false,
+  "rezim": "auto",
+  "nikdo_doma": false,
+  "pohyb": false,
+  "svetlo": {"zap": false, "barva": [0, 0, 0], "jas": 0, "rucne": false},
+  "chyby": []
+}
+\end{lstlisting}
+
+\section{Nastavení}
+\label{sec:rozhrani-nastaveni}
+
+Charakteristika Nastavení dává při čtení i~v~notifikaci všech 14 klíčů
+(tabulka~\ref{tab:nastaveni}). Zápis smí obsahovat jen klíče, které se mění. Hranice rozsahů
+platí včetně.
+
+\begin{table}[H]
+\centering
+\caption{Klíče Nastavení}
+\label{tab:nastaveni}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|p{3.9cm}|p{1.6cm}|p{2.3cm}|p{2.3cm}|p{3.2cm}|}
+\hline
+\textbf{Klíč} & \textbf{Typ} & \textbf{Rozsah} & \textbf{Výchozí} & \textbf{Význam} \\
+\hline
+\kod{rezim_termostatu} & text & \kod{auto}, \kod{rucni}, \kod{vypnuto} & \kod{"auto"} & režim
+  termostatu \\
+\hline
+\kod{cil_den} & číslo & 5 až 35~°C & \kod{23.0} & cíl ve dne a~večer (auto) \\
+\hline
+\kod{cil_noc} & číslo & 5 až 35~°C & \kod{20.0} & cíl v~noci (auto) \\
+\hline
+\kod{cil_rucni} & číslo & 5 až 35~°C & \kod{22.0} & cíl v~ručním režimu \\
+\hline
+\kod{zacatek_den} & text & \kod{00:00} až \kod{23:59} & \kod{"07:00"} & začátek dne \\
+\hline
+\kod{zacatek_vecer} & text & \kod{00:00} až \kod{23:59} & \kod{"19:00"} & začátek večera \\
+\hline
+\kod{zacatek_noc} & text & \kod{00:00} až \kod{23:59} & \kod{"22:00"} & začátek noci \\
+\hline
+\kod{prah_lux} & číslo & 1 až 10\,000~lx & \kod{50.0} & pod prahem je šero \\
+\hline
+\kod{nocni_svetlo_s} & celé číslo & 5 až 600~s & \kod{30} & doba nočního světla \\
+\hline
+\kod{nikdo_doma_po_min} & celé číslo & 1 až 240~min & \kod{30} & doba bez pohybu do
+  \enquote{nikdo doma} \\
+\hline
+\kod{utlum_nikdo_doma} & číslo & 0 až 10~°C & \kod{3.0} & snížení cíle, když nikdo není doma
+  (auto) \\
+\hline
+\kod{nocni_svetlo_pri_pohybu} & boolean & \kod{true}, \kod{false} & \kod{true} & rozsvítí
+  pohyb v~noci noční světlo? \\
+\hline
+\kod{barva_svetla} & pole tří celých čísel & každé 0 až 255 & \kod{[255,255,255]} & barva
+  světla \\
+\hline
+\kod{jas_svetla} & celé číslo & 0 až 100~\% & \kod{100} & jas světla, noční světlo nejvýš
+  10~\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Zápis do Nastavení zpracuje funkce \kod{slouc} (oddíl~\ref{sec:nastaveni}) podle těchto
+pravidel:
+\begin{itemize}
+  \item Zápis se sloučí s~dosavadním nastavením; prázdný objekt \kod{{}} je platný a~nic
+        nezmění.
+  \item Celý zápis platí, nebo neplatí: jediná neplatná hodnota shodí celý zápis.
+  \item Čísla mohou být celá i~desetinná (\kod{26} i~\kod{26.5}), \kod{true}, \kod{false}
+        a~text jsou chyba. Celá čísla musí být bez desetinné tečky, \kod{30.0} se odmítne.
+  \item Boolean je jen JSON \kod{true} nebo \kod{false}, ne \kod{1} ani \kod{"true"}.
+  \item Barva je pole právě tří celých čísel 0 až 255.
+  \item Čas je text \kod{HH:MM} se dvěma číslicemi hodin i~minut; \kod{7:00}, \kod{24:00}
+        a~\kod{07:00:00} neprojdou. Tři začátky musí být po sloučení navzájem různé, takže jde
+        v~jednom zápisu třeba dva začátky prohodit.
+  \item Neznámý klíč je chyba.
+\end{itemize}
+Příklady zápisů:
+\begin{itemize}
+  \item \kod{{"cil_den":26}} nastaví denní cíl na 26~°C,
+  \item \kod{{"rezim_termostatu":"rucni","cil_rucni":24.5}} přepne do ručního režimu s~cílem
+        24,5~°C,
+  \item \kod{{"cil_den":26,"cil_noc":99}} se odmítne celý, takže se nezmění ani \kod{cil_den},
+  \item \kod{{"zacatek_den":"19:00"}} se odmítne, protože by se začátek dne při výchozím
+        nastavení potkal se začátkem večera.
+\end{itemize}
+Po platném zápisu se nastavení uloží do souboru, takže vydrží restart.
+
+\section{Příkaz}
+\label{sec:rozhrani-prikaz}
+
+Příkaz je JSON objekt s~právě jedním klíčem, \kod{svetlo} nebo \kod{cas}
+(tabulka~\ref{tab:prikazy}). Je jednorázový a~odpovědí je jen úspěch, nebo chyba zápisu. Stav
+s~výsledkem přijde v~notifikaci hned po příkazu.
+
+\begin{table}[H]
+\centering
+\caption{Příkazy}
+\label{tab:prikazy}
+\small
+\begin{tabular}{|p{7.4cm}|p{6.1cm}|}
+\hline
+\textbf{Příkaz} & \textbf{Účinek} \\
+\hline
+\kod{{"svetlo":"zapnout"}} & zapne světlo ručně barvou a~jasem z~nastavení \\
+\hline
+\kod{{"svetlo":"vypnout"}} & vypne světlo ručně \\
+\hline
+\kod{{"svetlo":"prepnout"}} & ručně přepne světlo na opak toho, co právě dělá \\
+\hline
+\kod{{"svetlo":"auto"}} & zruší ruční volbu, světlo řídí automatika \\
+\hline
+\kod{{"svetlo":{"barva":[0,0,255],"jas":50}}} & uloží barvu a~jas do nastavení a~zapne světlo
+  ručně \\
+\hline
+\kod{{"svetlo":{"jas":30}}} & uloží jen jas, barva zůstane, a~zapne světlo ručně \\
+\hline
+\kod{{"cas":"2026-10-20T14:03:00"}} & nastaví systémový čas Raspberry Pi \\
+\hline
+\end{tabular}
+\end{table}
+
+Objekt příkazu \kod{svetlo} musí mít aspoň jeden z~klíčů \kod{barva} a~\kod{jas} a~žádný jiný;
+barva je pole tří celých čísel 0 až 255 a~jas celé číslo 0 až 100. Takový příkaz je zároveň
+změnou nastavení: hodnoty se uloží jako \kod{barva_svetla} a~\kod{jas_svetla}, takže jimi pak
+svítí i~automatika a~platí i~po restartu. Ruční volba platí do konce úseku dne, ve kterém
+vznikla, nebo do příkazu \kod{auto}. Příkaz \kod{{"svetlo":{"jas":0}}} je platný, ale výsledkem
+je zapnuté světlo, které nesvítí; ke zhasnutí slouží \kod{vypnout}.
+
+Čas se posílá přesně ve tvaru \kod{YYYY-MM-DDTHH:MM:SS} (19 znaků), jako místní čas tabletu bez
+časového pásma a~bez zlomků sekund. Domek čas s~časovým pásmem odmítne. Platný čas předá
+nastavovači času (oddíl~\ref{sec:ovladace}); když se systémový čas nastavit nepodaří, zápis
+skončí chybou. Nový čas se projeví v~nejbližším Stavu a~podle něj se přepočítá úsek dne;
+odpočty se měří na monotonních hodinách, takže je skok času nerozbije.
+
+Odmítne se příkaz, který nemá právě jeden klíč (\kod{{}}), jehož kořen není objekt
+(\kod{"zapnout"}), neznámý příkaz (\kod{{"teplota":20}}), neznámá hodnota světla
+(\kod{{"svetlo":"blikat"}}), objekt světla bez barvy a~jasu nebo s~cizím klíčem, barva mimo
+rozsah nebo s~jiným počtem složek, jas mimo 0 až 100 a~čas, který není čas nebo má časové
+pásmo. Odmítnutý příkaz nic nezmění ani neuloží.
+
+\section{Kódování hodnot v~ESS}
+\label{sec:rozhrani-ess}
+
+Služba ESS nese venkovní hodnoty ze Stavu (\kod{t_venku}, \kod{vlhkost}, \kod{tlak}) v~binárním
+tvaru podle specifikace charakteristik GATT~\cite{bt-gss}, takže je umí zobrazit i~obecná
+aplikace. Všechny hodnoty jsou little-endian (tabulka~\ref{tab:ess}). Hodnoty mimo rozsah typu
+se omezí: teplota na $-273{,}15$ až 327,67~°C, vlhkost na 0 až 100~\% a~tlak na 0 až
+$2^{32}-1$ desetin pascalu.
+
+\begin{table}[H]
+\centering
+\caption{Kódování hodnot ESS}
+\label{tab:ess}
+\small
+\begin{tabular}{|p{1.7cm}|p{2.2cm}|p{2.0cm}|p{3.1cm}|p{3.8cm}|}
+\hline
+\textbf{Hodnota} & \textbf{Typ} & \textbf{Jednotka} & \textbf{Neznámá hodnota} &
+  \textbf{Příklad} \\
+\hline
+teplota & sint16 & 0,01~°C & \kod{0x8000} (\kod{00 80}) & 14,5~°C $\to$ \kod{AA 05} \\
+\hline
+vlhkost & uint16 & 0,01~\% & \kod{0xFFFF} (\kod{FF FF}) & 61,3~\% $\to$ \kod{F2 17} \\
+\hline
+tlak & uint32 & 0,1~Pa & 0 (\kod{00 00 00 00}) & 1013,25~hPa $\to$ \kod{02 76 0F 00} \\
+\hline
+\end{tabular}
+\end{table}
+
+Neznámá hodnota se pošle, když je odpovídající údaj ve Stavu \kod{null}, tedy při poruše čidla
+(\kod{meteo}) a~u~vlhkosti z~BMP280. Teplota a~vlhkost mají ve
+specifikaci zvláštní hodnotu pro \enquote{neznámou}, tlak ne, proto se pro něj použije nula.
+Například $-5{,}5$~°C se zakóduje jako \kod{DA FD} a~23,05~°C jako \kod{01 09}.
+
+\section{Notifikace}
+\label{sec:rozhrani-notifikace}
+
+Server posílá notifikace jen charakteristikám, které klient odebírá, a~každá notifikace nese
+celou hodnotu. Kdy chodí, ukazuje tabulka~\ref{tab:notifikace}. Hodnoty ESS chodí vždy spolu se
+Stavem, ze stejného stavu domku. Notifikace Nastavení chodí po každém platném zápisu Nastavení,
+i~po prázdném \kod{{}} a~i~když zapisovalo jiné zařízení, a~po příkazu světla, který změnil barvu
+nebo jas. Po zapnutí odběru nepřijde žádná, proto si klient nastavení přečte.
+
+\begin{table}[H]
+\centering
+\caption{Kdy chodí notifikace}
+\label{tab:notifikace}
+\small
+\begin{tabular}{|p{5.2cm}|p{8.3cm}|}
+\hline
+\textbf{Událost} & \textbf{Notifikace} \\
+\hline
+každou sekundu, po kroku domku & Stav a~ESS, i~když se nic nezměnilo; klient podle toho pozná, že
+  domek žije \\
+\hline
+změna pohybu (kontrola po 100~ms) & Stav a~ESS hned, takže pohyb i~noční světlo se projeví
+  skoro okamžitě \\
+\hline
+platný zápis Nastavení & Nastavení a~potom Stav a~ESS; před Stavem proběhne krok domku, takže
+  Stav už změnu obsahuje \\
+\hline
+platný Příkaz & Stav a~ESS; když příkaz \kod{svetlo} změnil uloženou barvu nebo jas, přijde
+  před nimi i~Nastavení \\
+\hline
+\end{tabular}
+\end{table}
+
+Změny, které domek způsobí sám (změna úseku dne, rozsvícení a~zhasnutí světla, zapnutí topení,
+nové měření), se projeví nejpozději v~další sekundové notifikaci. Aplikace proto může data, ke
+kterým 3~s nepřišla žádná notifikace Stavu, považovat za stará.
+
+\section{Poruchy v~poli chyby}
+\label{sec:rozhrani-chyby}
+
+Pole \kod{chyby} ve Stavu obsahuje názvy právě trvajících poruch, abecedně a~bez opakování
+(tabulka~\ref{tab:chyby}). Prázdné pole znamená, že vše funguje. Domek se kvůli poruše
+nezastaví a~porucha zmizí sama, jakmile věc zase funguje.
+
+\begin{table}[H]
+\centering
+\caption{Hodnoty v~poli chyby}
+\label{tab:chyby}
+\small
+\begin{tabular}{|p{1.8cm}|p{3.3cm}|p{4.6cm}|p{3.4cm}|}
+\hline
+\textbf{Hodnota} & \textbf{Co selhalo} & \textbf{Důsledek} & \textbf{Kdy zmizí} \\
+\hline
+\kod{meteo} & čidlo teploty a~tlaku nejde přečíst nebo vrátilo neplatné číslo & \kod{t_venku},
+  \kod{vlhkost} a~\kod{tlak} jsou \kod{null}, termostat stojí (netopí ani nechladí),
+  \kod{t_uvnitr} drží poslední hodnotu, ESS posílá neznámé hodnoty & po dalším úspěšném čtení
+  (čte se každou sekundu) \\
+\hline
+\kod{osvetleni} & čidlo TSL2561 nejde přečíst nebo vrátilo neplatné číslo & \kod{lux} je
+  \kod{null}, ve dne se šero nepředpokládá a~světlo se nerozsvítí & po dalším úspěšném čtení \\
+\hline
+\kod{displej} & na displej nejde zapsat & displej nic neukazuje, ostatní funguje & po dalším
+  úspěšném zápisu; po deseti pokusech o~vytvoření zařízení až po restartu programu \\
+\hline
+\kod{svetlo} & na RGB LED nejde zapsat & \kod{svetlo} ve Stavu ukazuje, jak světlo má svítit,
+  ne jak svítí & po dalším úspěšném zápisu (zapisuje se každou sekundu) \\
+\hline
+\kod{nastaveni} & nastavení nejde uložit do souboru & změna platí, ale po restartu se vrátí
+  naposledy uložené nastavení & po dalším úspěšném uložení \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Odmítnutý zápis}
+\label{sec:rozhrani-odmitnuti}
+
+Server na zápis odpoví až po jeho zpracování. Platný zápis skončí úspěchem (v~Androidu stav
+\kod{GATT_SUCCESS}) a~hned po něm chodí notifikace podle tabulky~\ref{tab:notifikace}. Odmítne
+se zápis, který není platné UTF-8 nebo platný JSON, je delší než 512~B, nemá jako kořen objekt,
+obsahuje neznámý klíč nebo hodnotu špatného typu či mimo rozsah; u~Příkazu navíc zápis, který
+nemá právě jeden klíč nebo ho nejde provést. Obsluha zápisu v~takovém případě zapíše důvod do
+logu (řádek \kod{Zapis do Nastaveni odmitnut: ...}) a~vyhodí výjimku D-Bus s~názvem
+\kod{org.bluez.Error.Failed}. BlueZ~\cite{bluez} ji klientovi vrátí jako chybovou odpověď ATT,
+takže v~Androidu přijde stav různý od \kod{GATT_SUCCESS}. Nic se nezmění, ani částečně, a~server
+běží dál.
+
+Chybová odpověď ATT nese jen kód, text důvodu se přes Bluetooth nepřenáší. Aplikace proto
+hodnoty kontroluje předem podle tabulek v~této kapitole, při chybě ukáže obecnou chybu a~po
+chybě zápisu Nastavení si nastavení znovu přečte, aby zobrazovala to, co skutečně platí.
+
+\section{Zabezpečení}
+\label{sec:zabezpeceni}
+
+Rozhraní je navržené pro školní ukázku a~zabezpečení nemá: žádná charakteristika nevyžaduje
+párování, šifrování ani ověření. Připojit se, číst i~zapisovat může kdokoli v~dosahu Bluetooth.
+Cizí zařízení tak může změnit cílové teploty, režim termostatu, začátky úseků dne i~světlo
+a~změna vydrží i~restart, protože se nastavení ukládá. Příkazem \kod{cas} může nastavit systémový
+čas Raspberry Pi, a~tím posunout úsek dne; služba sice běží jako root, ale čas se před předáním
+příkazu \kod{date} kontroluje a~příkaz se volá bez shellu, takže přes něj nejde spustit jiný
+program. Ze Stavu lze číst údaj o~pohybu a~\enquote{nikdo doma}, tedy jestli je někdo přítomen,
+a~opakované zápisy Nastavení pokaždé zapíší soubor na paměťovou kartu. Všechny vstupy se přitom
+kontrolují (typy, rozsahy, délka do 512~B), takže neplatný zápis domek nerozbije.
+
+Možným zlepšením je vyžadovat pro zápis do Nastavení a~Příkazu šifrované, případně i~ověřené
+spojení. BlueZ to umí podle příznaků charakteristiky (například \kod{encrypt-write} nebo
+\kod{encrypt-authenticated-write}~\cite{bluez-gatt}), které bluezero předává při vytvoření
+charakteristiky. Tablet by se pak s~domkem musel jednou spárovat a~na Raspberry Pi by musela
+běžet obsluha párování, která ho v~BlueZ potvrdí. Pro ukázku se párování nepoužilo, aby se domek
+dal předvést i~z~cizího tabletu nebo z~aplikace nRF Connect bez přípravy.

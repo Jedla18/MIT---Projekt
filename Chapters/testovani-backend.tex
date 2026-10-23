@@ -1,0 +1,174 @@
+% Píše: backend. Sekce kapitoly Testování a ověření (kapitolu otevírá testovani.tex).
+\section{Testování backendu}
+\label{sec:testovani-backend}
+
+Backend se ověřoval ve třech vrstvách: automatickými testy na PC bez hardwaru, během v~režimu
+simulace a~nakonec na skutečném Raspberry Pi se zapojenými součástkami.
+
+\subsection{Automatické testy}
+
+Testy jsou psané pro pytest~\cite{pytest} a~spouštějí se z~kořene repozitáře příkazem
+\kod{python -m pytest}. Na PC s~Windows a~Pythonem 3.14 prošlo všech 746 testů za 2,1~s.
+Rozdělení do souborů ukazuje tabulka~\ref{tab:testy}.
+
+\begin{table}[H]
+\centering
+\caption{Automatické testy backendu}
+\label{tab:testy}
+\small
+\begin{tabular}{|p{5.2cm}|p{1.3cm}|p{7.0cm}|}
+\hline
+\textbf{Soubory \kod{test_*.py}} & \textbf{Testů} & \textbf{Co ověřují} \\
+\hline
+\kod{nastaveni}, \kod{denni_doba}, \kod{termostat}, \kod{svetlo}, \kod{text_displeje} & 257 &
+  čistou logiku: typy a~rozsahy nastavení, atomické uložení, úseky dne, tepelný model
+  a~hysterezi, automatiku světla, řádky displeje \\
+\hline
+\kod{jadro}, \kod{simulace} & 164 & krok domku, stav, příkazy, poruchy a~kontrolku pohybu se
+  simulovaným hardwarem \\
+\hline
+\kod{ble_format}, \kod{ble_server} & 128 & kódování ESS a~JSON, soulad dokumentu rozhraní
+  s~kódem, server BLE s~falešnou knihovnou bluezero \\
+\hline
+\kod{ovladace_pi}, \kod{cidlo_tsl2561}, \kod{rgb_led}, \kod{systemovy_cas} & 105 & ovladače
+  s~falešnými knihovnami, vzorec pro lux, gama korekci \\
+\hline
+\kod{spusteni}, \kod{casovac}, \kod{over_soucastky} & 92 & volby a~spuštění programu, obal
+  \kod{opakuj}, zkoušky součástek \\
+\hline
+\textbf{celkem} & \textbf{746} & \\
+\hline
+\end{tabular}
+\end{table}
+
+Knihovny pro Raspberry Pi (smbus2, RPi.bme280, gpiozero, luma, bluezero, dbus a~gi) na PC
+nejsou a~do vývojového prostředí se neinstalují. Soubor \kod{tests/conftest.py} proto obsahuje
+jejich falešné náhrady, které fixtury \kod{falesny_hardware} a~\kod{falesny_bluetooth} vloží do
+\kod{sys.modules} místo skutečných modulů. Náhrady mají stejné signatury jako skutečné knihovny
+ve verzích, jejichž zdrojový kód se při psaní ovladačů četl (smbus2 0.6.1, RPi.bme280 0.2.4,
+gpiozero 2.0.1, luma.core 2.6.0, luma.oled 3.16.0, bluezero 0.9.1 a~dbus-python 1.3.2), takže
+ovladač, který by je volal špatně, selže i~v~testu. Zaznamenávají, co ovladač volal, a~umějí na
+zvoleném místě selhat (otevření sběrnice, čtení ID, měření, zápis na GPIO, inicializace displeje),
+aby šlo ověřit hlášení poruch. Falešná bluezero napodobuje registraci, čtení s~posunem, zápis,
+odběr i~zánik registrace v~BlueZ.
+
+Testy jsou několika druhů:
+\begin{itemize}
+  \item jednotkové testy čisté logiky (nastavení, denní doba, termostat, světlo, text displeje,
+        formát BLE), včetně hraničních hodnot a~pořadí kroků,
+  \item testy jádra se simulovaným hardwarem z~\kod{hardware/simulace.py}, jehož atribut
+        \kod{selhava} napodobí poruchu součástky,
+  \item testy ovladačů a~serveru BLE s~falešnými knihovnami,
+  \item testy spuštění, které rozběhnou program celý, v~simulaci i~v~režimu Raspberry Pi
+        s~falešným hardwarem a~Bluetooth, s~falešnými hodinami místo čekání,
+  \item testy dokumentu \kod{docs/ble-rozhrani.md}: UUID, klíče Stavu, výchozí hodnoty
+        a~rozsahy Nastavení, názvy poruch a~všechny příklady JSON musí odpovídat kódu.
+\end{itemize}
+
+\subsection{Kontrola změn}
+
+Každou ucelenou změnu kódu po dokončení zkontrolovala nezávislá recenze: recenzent, který změnu
+nepsal, ji porovnal se zadáním a~posoudil kvalitu kódu a~testů. Nálezy se třídily na
+kritické, důležité a~drobné; kritické a~důležité se opravily a~oprava prošla novou recenzí.
+Nakonec prošla recenzí i~celá sada změn najednou.
+
+Sílu testů ověřovaly mutační testy. Do kopie kódu se vždy vložila jedna úmyslná chyba (mutant),
+například obrácená nerovnost, vynechaná podmínka nebo jiná konstanta, a~celá sada testů se
+spustila znovu. Mutant, kterého žádný test nezachytil, ukazuje na chybějící test. Při vzniku
+modulu nastavení testy zachytily všech 16 mutantů a~u~denní doby s~termostatem všech 44.
+Recenze kontrolky pohybu takto našla chybějící test: mutant, který při trvajícím pohybu
+přestal prodlužovat dobu svícení, testy nezachytily, a~proto přibyl test, který ho zachytí.
+
+\subsection{Simulace na PC}
+
+Režim \kod{--simulace} (oddíl~\ref{sec:simulace}) rozběhne celý domek na PC se simulovanými
+čidly a~každou sekundu vypíše stav. Ověřuje se v~něm chování v~čase: že vnitřní teplota
+stoupá k~cíli a~termostat se po jeho dosažení vypíná, že úsek dne odpovídá času a~že stav má
+stejné klíče jako Stav v~BLE.
+
+\subsection{Ověření na hardwaru}
+
+Na Raspberry Pi se nejdřív každá součástka vyzkoušela zvlášť zkouškami \kod{over_soucastky}
+(oddíl~\ref{sec:simulace}) a~potom celá služba. Zaznamenané výsledky z~21.~až 23.~10.~2026
+shrnuje tabulka~\ref{tab:hw-vysledky}.
+
+\begin{table}[H]
+\centering
+\caption{Zkoušky na hardwaru a~jejich výsledky}
+\label{tab:hw-vysledky}
+\small
+\begin{tabular}{|p{2.6cm}|p{4.8cm}|p{6.1cm}|}
+\hline
+\textbf{Zkouška} & \textbf{Co dělá} & \textbf{Výsledek} \\
+\hline
+\kod{i2cdetect -y 1} & vypíše adresy na sběrnici I\textsuperscript{2}C & \kod{39} (TSL2561),
+  \kod{3c} (SSD1306) a~\kod{76} (BMP280) \\
+\hline
+\kod{bme280} & ID čipu z~registru \kod{0xD0} a~tři měření po sekundě & ID \kod{0x58} (BMP280),
+  23,3~°C, 985,1~hPa, vlhkost \kod{--} \\
+\hline
+\kod{tsl2561} & ID čipu z~registru \kod{0x8A} a~deset měření kanálů CH0, CH1 a~lux po
+  sekundě & ID \kod{0x50}; CH0~=~62 a~CH1~=~9, tedy 26,0~lx; večer 4,5~lx \\
+\hline
+\kod{pir} & 30~s vypisuje změny čidla pohybu & výsledek nezaznamenaný; výstup čidla před
+  připojením změřen multimetrem: 3,3~V \\
+\hline
+\kod{led} & třikrát blikne červená, zelená a~oranžová LED & výsledek nezaznamenaný \\
+\hline
+\kod{displej} & na 5~s ukáže testovací text se všemi šesti řádky & rozložení řádků zkontrolované
+  náhledem s~písmem knihovny (obrázek~\ref{fig:displej}) \\
+\hline
+\kod{rgb} & rozsvítí červenou, zelenou, modrou a~bílou, každou na 1~s & pořadí barev správné;
+  večerní barva po gama korekci oranžová \\
+\hline
+služba \kod{domek} & běh celého programu & \kod{active}, bez restartů, pole \kod{chyby} prázdné,
+  čas z~NTP, periferie \kod{Termostat} zaregistrovaná v~BlueZ \\
+\hline
+uložené nastavení & načtení souboru z~dřívější verze & starý klíč převeden, zůstaly hodnoty
+  nastavené z~tabletu, například barva $(46, 197, 232)$ a~jas 44~\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Uložené nastavení zároveň dokládá, že zápisy z~tabletu přes BLE na hardwaru fungují: barvu,
+jas, práh šera a~začátek večera v~souboru nastavil tablet. Pro ruční zkoušku rozhraní je
+v~README backendu doporučený postup s~obecnou aplikací nRF Connect for
+Mobile~\cite{nrfconnect}: připojit se, vyžádat MTU 517, zapnout notifikace Stavu, zapsat platnou
+i~neplatnou hodnotu do Nastavení, poslat příkaz světla, odpojit se a~znovu připojit a~přečíst
+Stav bez zvýšení MTU. Výsledky tohoto postupu po jednotlivých krocích zaznamenané nejsou.
+
+\subsection{Problémy nalezené na skutečném hardwaru}
+\label{sec:problemy-hw}
+
+Testy na PC pracují s~falešnými knihovnami, které odpovídají zdrojovému kódu knihoven, ale ne
+nutně skutečným součástkám. Na hardwaru se proto objevilo pět problémů, které testy zachytit
+nemohly:
+\begin{description}
+  \item[BMP280 posílal vlhkost 0~\%.] Knihovna RPi.bme280 u~čidla BMP280, které vlhkost neměří,
+        vracela vlhkost nulovou a~tablet by ukazoval 0~\%. Ovladač teď podle ID čipu \kod{0x58}
+        pozná BMP280 a~vlhkost hlásí jako neznámou (\kod{null}, v~ESS \kod{0xFFFF}) bez
+        poruchy. Displej místo vlhkosti ukazuje tlak a~zkouška \kod{bme280} na BMP280
+        upozorní.
+  \item[Čidlo osvětlení bylo TSL2561, ne BH1750.] Původní program počítal s~BH1750 na adrese
+        \kod{0x23}, ale na sběrnici se ozvalo čidlo na adrese \kod{0x39} s~ID \kod{0x50}, tedy
+        TSL2561. Program dostal vlastní ovladač podle katalogového listu~\cite{tsl2561}
+        (oddíl~\ref{sec:ovladace}) a~ovladač BH1750 se odstranil.
+  \item[Večerní barva byla bílá.] Teplá žlutá $(255, 147, 41)$ s~jasem 60~\% svítila na RGB LED
+        skoro bíle, protože střída PWM rostla se složkou barvy lineárně. Ovladač teď používá gama
+        korekci 2,2 (oddíl~\ref{sec:svetlo}); nejdřív se upravily testy, které na původním kódu
+        selhaly, a~po opravě prošly. Na hardwaru pak světlo svítilo oranžově.
+  \item[Řádky displeje na rozhraní barev.] Řádky byly původně po 10 bodech, takže druhý řádek
+        zasahoval do žlutého pruhu a~ležel na rozhraní barev. Rozložení se změnilo tak, že první
+        řádek je sám ve žlutém pruhu, a~potom se ještě posunulo na polohy 0, 14, 24, 33, 42
+        a~52 bodů, aby se ocásky písmen nedotýkaly dalšího řádku.
+  \item[Prázdný config.txt po nečistém vypnutí.] Raspberry Pi přišlo o~napájení krátce po
+        instalaci, při které \kod{raspi-config} zapsal zapnutí I\textsuperscript{2}C do
+        \kod{/boot/firmware/config.txt}. Soubor na oddílu FAT zůstal prázdný (0~bajtů),
+        I\textsuperscript{2}C se po startu nezapnulo a~domek hlásil poruchy \kod{meteo},
+        \kod{osvetleni} i~\kod{displej}; v~logu byla chyba
+        \kod{No such file or directory: /dev/i2c-1}. Oprava byla
+        \kod{sudo raspi-config nonint do_i2c 0}, \kod{sync} a~restart. Instalační skript od té
+        doby přepisuje \kod{config.txt} jen tehdy, když I\textsuperscript{2}C zapnuté není,
+        a~hned potom zavolá \kod{sync}. Raspberry Pi se má vypínat příkazem
+        \kod{sudo poweroff}, ne vytažením napájení.
+\end{description}

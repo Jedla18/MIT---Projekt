@@ -1,0 +1,172 @@
+% Literatura k backendu a společným kapitolám. Píše: backend.
+% Literatura ke kapitole o aplikaci je v literatura-aplikace.bib (klíče začínají "app-").
+% Všechny adresy byly ověřeny 2026-10-23.
+
+% --- Katalogové listy součástek ---
+
+@manual{bmp280,
+  author  = {{Bosch Sensortec}},
+  title   = {BMP280: Digital Pressure Sensor. Data sheet},
+  version = {1.14},
+  date    = {2015-05},
+  note    = {Dokument BST-BMP280-DS001-11, kopie na webu Adafruit},
+  url     = {https://cdn-shop.adafruit.com/datasheets/BST-BMP280-DS001-11.pdf},
+  urldate = {2026-10-23},
+}
+
+@manual{bme280,
+  author  = {{Bosch Sensortec}},
+  title   = {BME280: Final data sheet},
+  version = {1.1},
+  date    = {2015-05},
+  note    = {Dokument BST-BME280-DS001-10, kopie na webu Adafruit},
+  url     = {https://cdn-shop.adafruit.com/datasheets/BST-BME280_DS001-10.pdf},
+  urldate = {2026-10-23},
+}
+
+@manual{tsl2561,
+  author  = {{Texas Advanced Optoelectronic Solutions}},
+  title   = {TSL2560, TSL2561: Light-to-Digital Converter},
+  date    = {2009-03},
+  note    = {Dokument TAOS059N, kopie na webu Adafruit},
+  url     = {https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf},
+  urldate = {2026-10-23},
+}
+
+@manual{ssd1306,
+  author  = {{Solomon Systech}},
+  title   = {SSD1306: 128 x 64 Dot Matrix OLED/PLED Segment/Common Driver with Controller},
+  version = {1.1},
+  date    = {2008-04},
+  note    = {Kopie na webu Adafruit},
+  url     = {https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf},
+  urldate = {2026-10-23},
+}
+
+% --- Raspberry Pi ---
+
+@online{rpi3bplus,
+  author  = {{Raspberry Pi Ltd}},
+  title   = {Raspberry Pi 3 Model B+},
+  url     = {https://www.raspberrypi.com/products/raspberry-pi-3-model-b-plus/},
+  urldate = {2026-10-23},
+}
+
+@online{rpi-hardware,
+  author  = {{Raspberry Pi Ltd}},
+  title   = {Raspberry Pi computer hardware},
+  note    = {Raspberry Pi Documentation},
+  url     = {https://www.raspberrypi.com/documentation/computers/raspberry-pi.html},
+  urldate = {2026-10-23},
+}
+
+% --- Bluetooth ---
+
+@manual{bt-core,
+  author  = {{Bluetooth SIG}},
+  title   = {Bluetooth Core Specification},
+  version = {6.0},
+  date    = {2024-08-27},
+  url     = {https://www.bluetooth.com/specifications/specs/core-specification-6-0/},
+  urldate = {2026-10-23},
+}
+
+@manual{bt-ess,
+  author  = {{Bluetooth SIG}},
+  title   = {Environmental Sensing Service},
+  version = {1.0.0},
+  date    = {2014-11-18},
+  url     = {https://www.bluetooth.com/specifications/specs/environmental-sensing-service-1-0/},
+  urldate = {2026-10-23},
+}
+
+@online{bt-gss,
+  author  = {{Bluetooth SIG}},
+  title   = {GATT Specification Supplement},
+  url     = {https://www.bluetooth.com/specifications/gss/},
+  urldate = {2026-10-23},
+}
+
+@online{bt-assigned,
+  author  = {{Bluetooth SIG}},
+  title   = {Assigned Numbers},
+  url     = {https://www.bluetooth.com/specifications/assigned-numbers/},
+  urldate = {2026-10-23},
+}
+
+@online{bluez,
+  author  = {{BlueZ Project}},
+  title   = {BlueZ: Bluetooth protocol stack for Linux},
+  note    = {Zdrojový kód},
+  url     = {https://github.com/bluez/bluez},
+  urldate = {2026-10-23},
+}
+
+@online{bluez-gatt,
+  author  = {{BlueZ Project}},
+  title   = {org.bluez.GattCharacteristic},
+  note    = {Dokumentace rozhraní D-Bus v~repozitáři BlueZ},
+  url     = {https://github.com/bluez/bluez/blob/master/doc/org.bluez.GattCharacteristic.rst},
+  urldate = {2026-10-23},
+}
+
+@online{nrfconnect,
+  author  = {{Nordic Semiconductor}},
+  title   = {nRF Connect for Mobile},
+  url     = {https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile},
+  urldate = {2026-10-23},
+}
+
+% --- Knihovny a nástroje ---
+
+@online{bluezero,
+  author  = {Byford, Barry},
+  title   = {python-bluezero: A simple Python interface to Bluez},
+  note    = {Zdrojový kód},
+  url     = {https://github.com/ukBaz/python-bluezero},
+  urldate = {2026-10-23},
+}
+
+@online{gpiozero,
+  author  = {Nuttall, Ben and Jones, Dave},
+  title   = {gpiozero: A simple interface to GPIO devices with Raspberry Pi},
+  url     = {https://gpiozero.readthedocs.io/},
+  urldate = {2026-10-23},
+}
+
+@online{lumaoled,
+  author  = {Hull, Richard and others},
+  title   = {Luma.OLED},
+  note    = {Dokumentace ovladačů displejů OLED (SSD1306 a~další)},
+  url     = {https://luma-oled.readthedocs.io/},
+  urldate = {2026-10-23},
+}
+
+@online{smbus2,
+  author  = {Lindegaard, Karl-Petter},
+  title   = {smbus2: a drop-in replacement for smbus-cffi/smbus-python in pure Python},
+  url     = {https://pypi.org/project/smbus2/},
+  urldate = {2026-10-23},
+}
+
+@online{rpibme280,
+  author  = {Hull, Richard},
+  title   = {RPi.bme280: A library to drive a Bosch BME280 temperature, humidity, pressure sensor
+             over I2C},
+  url     = {https://pypi.org/project/RPi.bme280/},
+  urldate = {2026-10-23},
+}
+
+@online{pytest,
+  author  = {{pytest-dev}},
+  title   = {pytest: helps you write better programs},
+  url     = {https://docs.pytest.org/},
+  urldate = {2026-10-23},
+}
+
+@online{systemd-unit,
+  author  = {{freedesktop.org}},
+  title   = {systemd.unit: Unit configuration},
+  url     = {https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html},
+  urldate = {2026-10-23},
+}

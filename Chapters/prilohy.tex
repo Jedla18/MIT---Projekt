@@ -1,0 +1,103 @@
+% Píše: backend. Přílohy k~backendu, každá jako \chapter{...}; za \appendix v~main.tex.
+\chapter{Příklady dat ve formátu JSON}
+\label{chap:priloha-json}
+
+Příloha doplňuje Stav ve dne z~výpisu~\ref{lst:stav-den} o~úplný Stav v~noci a~úplné výchozí
+Nastavení. Stav je pro čitelnost rozepsaný, domek ho posílá kompaktně, bez mezer. Význam klíčů
+je v~tabulkách~\ref{tab:stav} a~\ref{tab:nastaveni}.
+
+Výpis~\ref{lst:stav-bmp280} vypočítal program se simulovanými čidly nastavenými na hodnoty
+naměřené na hardwaru (23,3~°C, 985,1~hPa, 4,5~lx, čidlo BMP280 bez vlhkosti) minutu po
+spuštění v~noci. Vnitřní teplota začala na venkovní hodnotě 23,3~°C a~chlazení ji snižuje
+k~nočnímu cíli 20~°C. Vlhkost je \kod{null} bez poruchy (oddíl~\ref{sec:poznamky-soucastky}).
+
+\begin{lstlisting}[language=json, caption={Stav v~noci s~čidlem BMP280, chladí se}, label=lst:stav-bmp280]
+{
+  "cas": "2026-10-23T22:21:00",
+  "usek": "noc",
+  "t_venku": 23.3,
+  "vlhkost": null,
+  "tlak": 985.1,
+  "lux": 4.5,
+  "t_uvnitr": 20.03,
+  "cil": 20.0,
+  "topi": false,
+  "chladi": true,
+  "rezim": "auto",
+  "nikdo_doma": false,
+  "pohyb": false,
+  "svetlo": {"zap": false, "barva": [0, 0, 0], "jas": 0, "rucne": false},
+  "chyby": []
+}
+\end{lstlisting}
+
+Výpis~\ref{lst:nastaveni-prenos} je výchozí Nastavení přesně v~té podobě, v~jaké ho domek
+posílá přes BLE (301~B).
+
+\begin{lstlisting}[language=json, caption={Výchozí Nastavení tak, jak se přenáší}, label=lst:nastaveni-prenos]
+{"rezim_termostatu":"auto","cil_den":23.0,"cil_noc":20.0,"cil_rucni":22.0,"zacatek_den":"07:00","zacatek_vecer":"19:00","zacatek_noc":"22:00","prah_lux":50.0,"nocni_svetlo_s":30,"nikdo_doma_po_min":30,"utlum_nikdo_doma":3.0,"nocni_svetlo_pri_pohybu":true,"barva_svetla":[255,255,255],"jas_svetla":100}
+\end{lstlisting}
+
+\chapter{Struktura repozitáře backendu}
+\label{chap:priloha-repozitar}
+
+Repozitář backendu má strukturu podle výpisu~\ref{lst:repozitar}. Úlohy modulů balíčku
+\kod{domek} popisuje tabulka~\ref{tab:moduly}, soubory testů tabulka~\ref{tab:testy}.
+
+\begin{lstlisting}[language={}, identifierstyle={}, caption={Struktura repozitáře backendu}, label=lst:repozitar]
+README.md                 návod: zapojení, instalace, zkoušky, řešení problémů
+requirements-pi.txt       knihovny pro Raspberry Pi (pip)
+requirements-dev.txt      knihovny pro PC (pytest)
+pytest.ini                nastavení pytest (složka tests)
+main.py                   původní zkouška Bluetooth, domek ho nepoužívá
+deploy/
+    nahraj.ps1            nahrání programu z PC na Raspberry Pi
+    instaluj.sh           instalace na Raspberry Pi a zápis služby systemd
+docs/
+    ble-rozhrani.md       popis rozhraní BLE pro mobilní aplikaci
+domek/
+    __main__.py  jadro.py  nastaveni.py  denni_doba.py  termostat.py
+    svetlo.py  text_displeje.py  ble_format.py  ble_server.py
+    casovac.py  over_soucastky.py
+    hardware/
+        rozhrani.py  simulace.py  cidlo_bme280.py  cidlo_tsl2561.py
+        cidlo_pohybu.py  indikatory.py  rgb_led.py  displej_oled.py
+        systemovy_cas.py
+tests/
+    conftest.py           falešné knihovny pro Raspberry Pi
+    test_*.py             16 souborů s testy
+\end{lstlisting}
+
+\chapter{Postup instalace na Raspberry Pi}
+\label{chap:priloha-instalace}
+
+Postup předpokládá Raspberry Pi 3B+ s~Raspberry Pi OS, zapnutým SSH a~připojením k~internetu,
+zapojené podle kapitoly~\ref{chap:hardware}. V~příkladech je \kod{admin@raspberry.local}
+uživatel a~adresa Raspberry Pi v~síti.
+\begin{enumerate}
+  \item Na Raspberry Pi zkontrolovat systém příkazem \kod{cat /etc/os-release; python3 --version}
+        (Python aspoň 3.9) a~nastavit časové pásmo shodné s~tabletem, například
+        \kod{sudo timedatectl set-timezone Europe/Prague}.
+  \item Uživatel na Raspberry Pi musí mít \kod{sudo} bez hesla, protože ho skript pro nahrání
+        volá přes SSH, kde se na heslo nemá kde zeptat.
+  \item Na PC v~kořeni repozitáře spustit \kod{./deploy/nahraj.ps1 -Cil admin@raspberry.local}.
+  \item Na Raspberry Pi spustit \kod{cd ~/domek} a~\kod{sudo bash deploy/instaluj.sh}; co skript
+        dělá, popisuje oddíl~\ref{sec:nasazeni}.
+  \item Pokud skript I\textsuperscript{2}C zapínal, restartovat Raspberry Pi příkazem
+        \kod{sudo reboot} a~po přihlášení přejít znovu do \kod{~/domek} (\kod{cd ~/domek}).
+  \item Zkontrolovat sběrnici příkazem \kod{i2cdetect -y 1}; v~tabulce mají být \kod{39},
+        \kod{3c} a~\kod{76}. Když je čidlo teploty na adrese \kod{77}, nainstalovat znovu
+        s~volbou: \kod{sudo bash deploy/instaluj.sh --bme280-adresa 0x77}.
+  \item Se zastavenou službou (\kod{sudo systemctl stop domek}) vyzkoušet součástky příkazy
+        \kod{sudo venv/bin/python -m domek.over_soucastky} se zkouškami \kod{bme280},
+        \kod{pir}, \kod{led}, \kod{displej}, \kod{tsl2561} a~\kod{rgb} a~službu znovu spustit
+        (\kod{sudo systemctl start domek}).
+  \item Zkontrolovat službu příkazem \kod{systemctl status domek} (stav \kod{active (running)})
+        a~log příkazem \kod{journalctl -u domek -f}; v~logu má být řádek o~běžící periferii
+        \kod{Termostat} a~displej má ukazovat čas a~teploty.
+  \item Z~tabletu se připojit k~periferii \kod{Termostat}, vyžádat MTU 517 a~zapnout notifikace
+        Stavu; bez internetu nastavit čas příkazem \kod{cas}.
+  \item Každou další verzi programu nahrát znovu skriptem \kod{nahraj.ps1}; ten službu sám
+        restartuje. Instalaci je potřeba opakovat jen při změně \kod{requirements-pi.txt} nebo
+        voleb služby.
+\end{enumerate}
