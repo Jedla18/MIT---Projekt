@@ -3,4 +3,98 @@
 \section{Testování mobilní aplikace}
 \label{sec:testovani-aplikace}
 
-% TODO (aplikace): obsah sekce.
+Aplikace se testuje na třech úrovních: automatickými testy na počítači, ručně v~telefonu proti
+simulovanému domku a~se skutečným Raspberry Pi. Nová funkce i~oprava chyby začínala testem,
+který bez změny kódu selhal, a~teprve potom vznikl kód, se kterým test prošel.
+
+\subsection{Automatické testy}
+
+Automatické testy běží na počítači v~prostředí Java Virtual Machine (JVM), bez telefonu
+i~emulátoru, a~spouští je příkaz \kod{./gradlew testDebugUnitTest}. Obrazovky v~nich vykresluje
+knihovna Robolectric~\cite{app-robolectric}, která na JVM napodobuje Android. Ovládá je testovací
+rozhraní Compose~\cite{app-compose-testy}: najde prvek podle textu nebo popisu pro čtečku
+obrazovky, klepne na něj a~ověří, co se stalo. Testy ViewModelu běží ve virtuálním čase knihovny
+kotlinx-coroutines-test~\cite{app-coroutines-testy}, takže limity v~řádu sekund ověří okamžitě
+a~pokaždé stejně. Místo skutečného zdroje dat dostávají falešný zdroj, kterému test nastavuje
+Stav a~Nastavení a~který zaznamenává zápisy a~příkazy.
+
+Aplikace má 1\,173~automatických testů a~všechny procházejí. Tabulka~\ref{tab:app-testy}
+ukazuje, jak se dělí podle částí kódu.
+
+\begin{table}[H]
+\centering
+\caption{Automatické testy aplikace podle částí kódu}
+\label{tab:app-testy}
+\begin{tabular}{|p{0.20\textwidth}|p{0.09\textwidth}|p{0.59\textwidth}|}
+\hline
+\textbf{Část kódu} & \textbf{Testů} & \textbf{Co testy ověřují} \\ \hline
+obrazovky & 457 & texty a~stavy prvků, akce po klepnutí, zašedlé ovladače, rozvržení na telefonu
+  a~tabletu, texty při zvětšeném písmu \\ \hline
+ViewModel & 252 & zpoždění a~slučování zápisů, potvrzení do 3~s, hlášky po chybě, deník, historie
+  grafu \\ \hline
+simulace & 167 & pravidla domku podle rozhraní: termostat, automatika světla, úseky dne, odmítnutí
+  neplatných zápisů a~příkazů \\ \hline
+snímky obrazovek & 119 & vykreslení obrazovek ve všech důležitých stavech do obrázků \\ \hline
+doménová logika & 69 & úsek dne, prahy termostatu, texty světla a~chyb, český formát čísel \\ \hline
+Bluetooth LE & 46 & odstupy pokusů o~připojení, výběr domku po hledání, rozestup startů hledání,
+  kontrola MTU, oprávnění podle verze Androidu \\ \hline
+datový model & 39 & převod JSON, tolerance k~neznámým klíčům a~číslům jako \kod{50.0}, celá čísla
+  v~zápisech bez desetinné tečky \\ \hline
+ostatní & 24 & aktivita a~pomocné nástroje testů \\ \hline
+\end{tabular}
+\end{table}
+
+Výpis~\ref{lst:app-test} ukazuje test z~části ViewModel. Hlídá, že svítící světlo po výběru
+barvy neukáže na okamžik starou barvu (oddíl~\ref{sec:app-data}): vybraná barva musí zůstat,
+dokud ji nepotvrdí Nastavení i~Stav. Funkce \kod{runCurrent} spustí všechno, co ve virtuálním
+čase čeká na provedení, a~proměnná \kod{fake} je falešný zdroj dat.
+
+\begin{lstlisting}[language=kotlin, breaklines=true, caption={Test potvrzení vybrané barvy světla}, label=lst:app-test]
+@Test
+fun aShiningLightKeepsTheStoredLookDraftUntilTheStatusShowsItToo() = vmTest {
+    val vm = connectedViewModel()
+    val red = LightState(on = true, color = listOf(255, 0, 0), brightness = 100, manual = true)
+    fake.status.value = statusWithLight(red)
+    runCurrent()
+    vm.setLightColor(Rgb(0, 0, 255))
+    runCurrent()
+
+    fake.settings.value = DEFAULTS.copy(lightColor = listOf(0, 0, 255))
+    runCurrent()
+    assertNotNull(vm.state.lightDraft)
+    assertEquals(red.copy(color = listOf(0, 0, 255)), vm.state.shownLight)
+
+    fake.status.value = statusWithLight(red.copy(color = listOf(0, 0, 255)))
+    runCurrent()
+    assertNull(vm.state.lightDraft)
+}
+\end{lstlisting}
+
+Testy snímků obrazovek vykreslí 114~obrázků: obrazovky na telefonu na výšku i~na šířku, na
+tabletu, v~tmavém motivu a~s~písmem zvětšeným na 150~\%. Kromě uložení obrázku každý test
+ověří, že se žádný text neořízne, nezalomí uprostřed slova a~nepřekrývá s~jiným. Obrázky se
+procházejí ručně po každé změně vzhledu a~pocházejí z~nich i~snímky v~této dokumentaci.
+
+Automaticky se neověřuje samotná komunikace s~Bluetooth zásobníkem Androidu, protože zpětná
+volání třídy \kod{BluetoothGatt} na JVM nefungují. Testy pokrývají logiku klienta Bluetooth LE,
+která na nich nezávisí, a~spojení se skutečným domkem se zkouší ručně.
+
+\subsection{Ruční testy}
+
+Ruční zkouška se řídí kontrolním seznamem, který je součástí zdrojových kódů aplikace. Seznam
+prochází první spuštění a~oprávnění, všechna tlačítka simulace, zápisy nastavení a~jejich
+odmítnutí, ovládání světla, deník, rozvržení na šířku, na tabletu, se zvětšeným písmem
+a~v~tmavém motivu a~obnovu spojení po vypnutí Bluetooth, vzdálení z~dosahu a~restartu
+Raspberry Pi. U~každého kroku uvádí, co přesně se má na obrazovce objevit. Aplikace se zkouší
+na telefonu Samsung Galaxy A25 s~Androidem~16 a~na tabletu Samsung Galaxy Tab A8
+s~Androidem~14.
+
+\subsection{Test se skutečným Raspberry Pi}
+
+První společný test se skutečným Raspberry Pi ověřil, že se aplikace připojí s~MTU 517~B,
+dostává notifikace Stavu každou sekundu a~zobrazuje živá data. Test ukázal tři odchylky na
+straně domku: vlhkost chodila jako 0, i~když čidlo BMP280 vlhkost neměří a~podle rozhraní má
+chodit \kod{null}, čidlo osvětlení TSL2561 se nenašlo a~hodiny Raspberry Pi šly asi o~2~minuty
+napřed. Zjištění se předala straně backendu. Po testu backend dodal závazný popis rozhraní
+(kapitola~\ref{chap:rozhrani}) a~aplikace se mu přizpůsobila, například v~názvu klíče pro
+rozsvícení při pohybu a~v~kódech poruch čidel.
