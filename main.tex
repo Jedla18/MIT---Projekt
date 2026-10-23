@@ -1,14 +1,111 @@
-\documentclass{article}
-\usepackage{graphicx} % Required for inserting images
+% Dokumentace semestrálního projektu MITŘ: chytrý domek ovládaný přes Bluetooth LE.
+%
+% Šablona: třída diploma.cls (VŠB-TUO, FEI) bez úprav, stejně jako v diplomové práci autora.
+% Pro semestrální projekt se zvenku mění jen popisky titulní strany (viz \makeatletter níže).
+%
+% Překlad: pdfLaTeX + biber (v Overleafu výchozí). Kdo píše který soubor, je v README.md.
+\documentclass[czech,bachelor]{diploma}
+% nastavení hloubky obsahu
+\setcounter{tocdepth}{2}
+% Další doplňující balíky maker
+\usepackage[autostyle=true,czech=quotes]{csquotes} % korektní sazba uvozovek, podpora pro biblatex
+\usepackage[backend=biber, style=iso-numeric, alldates=iso]{biblatex} % bibliografie
+\usepackage[python]{diplomalst}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{babel,positioning,arrows.meta,fit,backgrounds,calc}
 
-\title{MITŘ - Projekt}
-\author{Martin Jedlička}
-\date{October 2026}
+% nastavení mezer
+\setlist[itemize]{noitemsep, topsep=0pt}
+\hypersetup{hidelinks}
+\emergencystretch=3em % dlouhé názvy v \kod nevyčnívají do okraje
 
+% Kód v běžném textu: \kod{nocni_svetlo_pri_pohybu}, \kod{{"svetlo":"zapnout"}}.
+% Podtržítka a uvozovky se píšou bez escapování; uvnitř nesmí být znaky % a #.
+\newcommand{\kod}[1]{\texttt{\detokenize{#1}}}
+
+% Kapitola se vloží, jen když už v repozitáři je: obě části projektu se píšou souběžně
+% a dokument se tak přeloží i v době, kdy některá kapitola ještě chybí.
+\newcommand{\vlozkapitolu}[1]{\InputIfFileExists{Chapters/#1}{}{\typeout{Kapitola #1 zatim chybi}}}
+
+% Jazyky pro ukázky kódu, které listings sám nezná (Python nastavuje diplomalst)
+\lstdefinelanguage{json}{
+  morestring=[b]",
+  sensitive=true,
+}
+\lstdefinelanguage{kotlin}{
+  morekeywords={package,import,class,object,interface,fun,val,var,if,else,when,for,while,
+    return,private,public,internal,override,suspend,data,sealed,enum,companion,null,true,
+    false,is,in,as,by,init,try,catch,finally,throw,const,lateinit,open,abstract},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+}
+\lstset{basicstyle=\ttfamily\small}
+
+% Zadáme požadované vstupy pro generování titulních stran.
+\ThesisAuthor{Martin Jedlička}
+\ThesisSupervisor{(doplnit jméno vyučujícího)} % TODO: jméno vyučujícího předmětu MITŘ
+\CzechThesisTitle{Chytrý domek ovládaný přes Bluetooth LE}
+\EnglishThesisTitle{Smart House Controlled via Bluetooth LE}
+\SubmissionYear{2026}
+
+% Semestrální projekt místo závěrečné práce: třída se nemění, jen se přepíšou její popisky.
+% Zadání závěrečné práce se nevkládá; kdyby se mělo vložit zadání projektu jako PDF, smaž řádek
+% s \renewcommand a nastav \ThesisAssignmentFileName{jmeno-souboru-bez-pdf}.
+\makeatletter
+\Dipl@ThesisCaption={Semestrální projekt z předmětu MITŘ}
+\Dipl@SupervisorCaption={Vyučující}
+\renewcommand{\Dipl@ThesisAssignmentPages}{}
+\makeatother
+
+\CzechAbstract{\input{Chapters/abstrakt}}
+\CzechKeywords{Bluetooth Low Energy, GATT, Raspberry Pi, Python, Android, Kotlin, chytrá domácnost,
+  simulace termostatu}
+\EnglishAbstract{\input{Chapters/abstract-en}}
+\EnglishKeywords{Bluetooth Low Energy, GATT, Raspberry Pi, Python, Android, Kotlin, smart home,
+  thermostat simulation}
+
+% Zkratky a literatura: každá strana projektu má vlastní soubor, aby se zápisy nepřekrývaly.
+\input{zkratky}
+\input{zkratky-aplikace}
+\IfFileExists{literatura.bib}{\addbibresource{literatura.bib}}{}
+\IfFileExists{literatura-aplikace.bib}{\addbibresource{literatura-aplikace.bib}}{}
+
+% Začátek dokumentu
 \begin{document}
 
-\maketitle
+% Titulní strana, abstrakty, obsah a seznam zkratek
+\MakeTitlePages
 
-\section{Introduction}
+\listoffigures
+\clearpage
+
+\listoftables
+\clearpage
+
+% Text práce
+\vlozkapitolu{uvod}
+\vlozkapitolu{navrh}
+\vlozkapitolu{hardware}
+\vlozkapitolu{backend}
+\vlozkapitolu{rozhrani}
+\vlozkapitolu{aplikace}
+\vlozkapitolu{testovani}
+\vlozkapitolu{zaver}
+
+% Seznam literatury
+\sloppy
+\printbibliography[title={Literatura}, heading=bibintoc]
+
+% Přílohy
+\appendix
+\vlozkapitolu{prilohy}
+\vlozkapitolu{prilohy-aplikace}
 
 \end{document}

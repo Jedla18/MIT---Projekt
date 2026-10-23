@@ -1,0 +1,102 @@
+% Píše: backend. Popisuje celý systém, takže ho může připomínkovat i strana
+% aplikace (přes uživatele), ale soubor upravuje jen backend.
+\chapter{Návrh systému}
+\label{chap:navrh}
+
+\section{Požadavky}
+
+Z~cíle projektu vyplynuly tyto požadavky:
+\begin{itemize}
+  \item domek měří skutečnou teplotu, tlak, osvětlení a~pohyb a~hodnoty posílá do tabletu,
+  \item vnitřní teplota domu se simuluje a~termostat s~hysterezí podle ní topí nebo chladí;
+        topení a~chlazení ukazují kontrolky,
+  \item světlo se řídí automaticky podle denní doby, šera a~pohybu, z~tabletu ho jde zapnout,
+        vypnout a~nastavit mu barvu a~jas,
+  \item nastavení (cílové teploty, začátky úseků dne, prahy a~časy) se mění z~tabletu a~vydrží
+        restart,
+  \item domek běží sám po zapnutí napájení, bez tabletu i~bez připojení k~internetu,
+  \item vše se napájí z~Raspberry Pi, bez externího zdroje.
+\end{itemize}
+
+\section{Architektura}
+
+Systém má tři vrstvy (obrázek~\ref{fig:architektura}). Čidla a~výstupy jsou připojené přímo
+k~Raspberry Pi přes sběrnici I\textsuperscript{2}C a~piny GPIO. Program na Raspberry Pi
+(backend) je čte, řídí logiku domku a~stav nabízí přes BLE. Tablet s~mobilní aplikací
+(frontend) je klient BLE: stav čte a~odebírá jeho notifikace, zapisuje nastavení a~příkazy.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\sffamily\small,
+  blok/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm,
+    inner sep=4pt, fill=white},
+  skupina/.style={draw, dashed, rounded corners=4pt, inner sep=8pt},
+  sipka/.style={-{Stealth[length=2.2mm]}, thick},
+  obousmerna/.style={{Stealth[length=2.2mm]}-{Stealth[length=2.2mm]}, thick},
+]
+  % Raspberry Pi a program
+  \node[blok, minimum width=4.6cm] (jadro) {Jádro domku\\(termostat, světlo, nastavení)};
+  \node[blok, minimum width=4.6cm, below=0.35cm of jadro] (ble)
+    {BLE server (BlueZ, bluezero)};
+  \node[blok, minimum width=4.6cm, above=0.35cm of jadro] (ovladace)
+    {Ovladače čidel a~výstupů};
+  \node[skupina, fit=(ovladace)(jadro)(ble), label={above:Raspberry Pi 3B+ (Python)}] (pi) {};
+
+  % Čidla vlevo
+  \node[blok, left=1.4cm of ovladace.west, anchor=east, yshift=0.9cm] (bmp)
+    {BMP280\\teplota, tlak};
+  \node[blok, below=0.25cm of bmp] (tsl) {TSL2561\\osvětlení};
+  \node[blok, below=0.25cm of tsl] (pir) {HC-SR501\\pohyb};
+  \node[skupina, fit=(bmp)(tsl)(pir), label={above:Čidla}] (cidla) {};
+
+  % Výstupy dole
+  \node[blok, below=1.3cm of ble, xshift=-3.1cm] (rgb) {RGB LED\\světlo};
+  \node[blok, right=0.3cm of rgb] (semafor) {LED semafor\\kontrolky};
+  \node[blok, right=0.3cm of semafor] (oled) {SSD1306\\displej};
+  \node[skupina, fit=(rgb)(semafor)(oled), label={below:Výstupy}] (vystupy) {};
+
+  % Tablet vpravo
+  \node[blok, right=2.6cm of jadro, minimum width=3.2cm, minimum height=2.4cm] (tablet)
+    {Tablet s~Androidem\\[2pt]mobilní aplikace\\(Kotlin)};
+
+  \draw[sipka] (cidla.east) -- node[above, sloped] {I\textsuperscript{2}C, GPIO}
+    (cidla.east -| pi.west);
+  \draw[sipka] (pi.south |- vystupy.north) ++(0,1.0) -- node[right] {PWM, GPIO, I\textsuperscript{2}C}
+    (pi.south |- vystupy.north);
+  \draw[obousmerna] (pi.east |- tablet.west) -- node[above] {Bluetooth LE}
+    node[below, align=center, font=\sffamily\scriptsize] {GATT: Stav, Nastavení,\\Příkaz, ESS}
+    (tablet.west);
+\end{tikzpicture}
+\caption{Architektura chytrého domku}
+\label{fig:architektura}
+\end{figure}
+
+\section{Rozdělení odpovědností}
+
+Veškerá logika domku je na Raspberry Pi. Domek tak funguje i~bez tabletu: termostat reguluje,
+světlo se rozsvěcí podle denní doby a~pohybu a~stav je vidět na displeji. Aplikace je tenký
+klient, který stav zobrazuje a~posílá jen změny nastavení a~příkazy; o~tom, jak domek reaguje,
+rozhoduje backend. Díky tomu stačí, aby obě strany dodržely komunikační rozhraní popsané
+v~kapitole~\ref{chap:rozhrani}, a~každá se může vyvíjet a~testovat samostatně: backend proti
+falešnému hardwaru a~v~režimu simulace, aplikace proti simulovanému domku.
+
+\section{Klíčová rozhodnutí}
+
+\begin{description}
+  \item[Bluetooth LE místo klasického Bluetooth.] BLE nepotřebuje párování ani sériový
+        protokol nad RFCOMM. Data jsou rozdělená do charakteristik GATT, které jde číst, zapisovat
+        a~odebírat jejich změny, a~Android má pro roli klienta přímou podporu.
+  \item[Raspberry Pi jako periferie.] Raspberry Pi 3B+ má vestavěný Bluetooth adaptér a~Linux
+        se zásobníkem BlueZ, který roli periferie (serveru GATT) umí. Python dovoluje psát
+        ovladače i~logiku na jednom místě a~testovat je na PC bez hardwaru.
+  \item[JSON v~charakteristikách.] Stav, nastavení i~příkazy jsou čitelné a~snadno
+        rozšiřitelné; aby se vešly do jedné charakteristiky, je velikost omezena na 512~B
+        a~domlouvá se MTU 517. Teplota, vlhkost a~tlak jsou navíc ve standardní službě
+        Environmental Sensing, kterou umí zobrazit i~obecné aplikace.
+  \item[Simulovaná vnitřní teplota.] Teplotu v~místnosti kontrolkou ohřát nejde, proto
+        skutečné čidlo měří venkovní teplotu a~vnitřní teplota domu je simulovaná. Termostat
+        reaguje na simulovanou teplotu a~jeho činnost ukazují kontrolky topení a~chlazení.
+  \item[Napájení jen z~Raspberry Pi.] Všechny součástky odebírají malý proud z~pinů 3,3~V
+        a~5~V; světlo je proto jedna RGB LED, ne výkonný pásek.
+\end{description}

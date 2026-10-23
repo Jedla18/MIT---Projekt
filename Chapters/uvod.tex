@@ -1,0 +1,34 @@
+% Píše: backend.
+\chapter{Úvod}
+\label{chap:uvod}
+
+Zadání semestrálního projektu z~předmětu MITŘ požaduje mobilní aplikaci, která splní alespoň
+jeden ze čtyř bodů: využije vestavěná čidla mobilního zařízení, bude komunikovat s~okolím
+bezdrátově, bude komunikovat s~vestavěným řídicím systémem přes USB OTG, nebo splní vlastní
+schválené zadání. Zvolili jsme variantu~2, komunikaci s~okolím pomocí bezdrátové komunikace,
+a~v~ní komplexní komunikaci přes Bluetooth Low Energy (BLE). U~komplexní komunikace zadání
+klade důraz především na funkčnost; příklady uvádí sběr dat ze senzorů přes BLE a~vizualizaci
+řídicí technologie přes Bluetooth.
+
+Cílem projektu je \emph{chytrý domek}: malá simulace chytré domácnosti, kterou řídí Raspberry Pi
+a~kterou uživatel sleduje a~ovládá z~tabletu. Domek měří skutečnou teplotu, tlak, osvětlení
+a~pohyb, simuluje vnitřní teplotu domu s~termostatem, který topí a~chladí, automaticky rozsvěcí
+barevné světlo podle denní doby, šera a~pohybu a~svůj stav ukazuje na malém displeji
+a~kontrolkách. Tablet přes BLE zobrazuje stav, mění nastavení a~posílá příkazy, například
+ruční zapnutí světla v~zadané barvě. Projekt je čistě simulace: nemá fyzický model domu,
+topení ani vypínače na zdech a~celý se napájí z~Raspberry Pi.
+
+Práce má dvě části, které spojuje přesně popsané komunikační rozhraní:
+\begin{itemize}
+  \item \textbf{backend} -- program v~Pythonu na Raspberry Pi, který obsluhuje čidla a~výstupy,
+        řídí logiku domku a~vystupuje jako periferie BLE,
+  \item \textbf{frontend} -- mobilní aplikace v~Kotlinu pro Android, která se k~domku připojuje
+        jako klient BLE.
+\end{itemize}
+
+Kapitola~\ref{chap:navrh} popisuje návrh celého systému a~jeho architekturu,
+kapitola~\ref{chap:hardware} použitý hardware a~jeho zapojení. Kapitola~\ref{chap:backend} se
+věnuje programu na Raspberry Pi a~kapitola~\ref{chap:rozhrani} komunikačnímu rozhraní BLE, které
+je smlouvou mezi oběma částmi. Kapitola~\ref{chap:aplikace} popisuje mobilní aplikaci
+a~kapitola~\ref{chap:testovani} ověření obou částí. Závěr shrnuje výsledky, omezení řešení
+a~možná rozšíření.

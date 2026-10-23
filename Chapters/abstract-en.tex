@@ -1,0 +1,11 @@
+% Píše: backend. Anglický abstrakt, překlad českého.
+This work describes the design and implementation of a simulated smart house controlled from
+an Android tablet over Bluetooth Low Energy. The house is driven by a Raspberry Pi 3B+ running
+a Python program. It reads real sensors (temperature and pressure, illuminance and motion),
+simulates the indoor temperature and a thermostat with heating and cooling, automatically
+controls a colour light according to the time of day, illuminance and motion, and shows its
+state on a display and indicator LEDs. Externally it acts as a BLE peripheral with the standard
+Environmental Sensing service and a custom service that carries the state, the settings and
+commands as JSON. A mobile application written in Kotlin displays the state and controls the
+house. The work covers the wiring, the communication interface, both programs and their
+verification by automated tests and on real hardware.

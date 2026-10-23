@@ -1,0 +1,10 @@
+% Píše: backend. Krátký český abstrakt celé práce.
+Práce popisuje návrh a~realizaci simulovaného chytrého domku, který se ovládá z~tabletu
+s~Androidem přes Bluetooth Low Energy. Řídicí jednotkou domku je Raspberry Pi 3B+ s~programem
+v~Pythonu. Ten čte skutečná čidla (teplotu a~tlak, osvětlení a~pohyb), simuluje vnitřní teplotu
+domu a~termostat s~topením a~chlazením, automaticky řídí barevné světlo podle denní doby,
+osvětlení a~pohybu a~stav ukazuje na displeji a~kontrolkách. Navenek vystupuje jako periferie
+BLE se standardní službou Environmental Sensing a~vlastní službou, která přenáší stav, nastavení
+a~příkazy ve formátu JSON. Mobilní aplikace v~Kotlinu stav zobrazuje a~domek ovládá. Součástí
+práce je popis zapojení, komunikačního rozhraní, obou programů a~jejich ověření automatickými
+testy i~na skutečném hardwaru.
