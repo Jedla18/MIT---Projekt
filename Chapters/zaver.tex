@@ -1,5 +1,40 @@
-% Píše: backend, až budou hotové obě části.
+% Píše: aplikace. Závěr shrnuje obě části projektu.
 \chapter{Závěr}
 \label{chap:zaver}
 
-% TODO (backend): shrnutí výsledků, omezení a možná rozšíření, až budou hotové všechny kapitoly.
+Projekt splnil variantu~2 zadání, komunikaci s~okolím pomocí bezdrátové komunikace, a~to
+v~komplexní podobě přes Bluetooth Low Energy. Vznikl chytrý dům řízený Raspberry Pi 3B+, který
+měří skutečná čidla, simuluje vnitřní teplotu s~termostatem, automaticky řídí barevné světlo
+a~vystupuje jako periferie BLE, a~mobilní aplikace pro Android, která se k~němu připojí jako
+klient. Oba příklady, které zadání u~komplexní komunikace uvádí, projekt pokrývá: aplikace sbírá
+data ze senzorů přes Bluetooth LE a~vizualizuje řídicí technologii, tedy termostat a~světlo,
+v~přehledu, grafu teplot a~deníku událostí. Navíc dům i~ovládá: mění nastavení a~posílá příkazy.
+Stav přichází každou sekundu a~změnu nastavení dům potvrdí notifikací, takže aplikace ukazuje
+skutečný stav bez prodlevy.
+
+Obě části spojuje přesně popsané komunikační rozhraní (kapitola~\ref{chap:rozhrani}). Díky němu
+se mohly vyvíjet a~testovat souběžně a~samostatně: backend proti falešnému hardwaru
+a~v~režimu simulace na PC (oddíl~\ref{sec:simulace}), aplikace proti simulovanému domu, který
+dodržuje stejná pravidla (oddíl~\ref{sec:app-simulace}). Backend má 746 a~aplikace 1\,173
+automatických testů a~všechny procházejí. Součástky se vyzkoušely na Raspberry Pi jednotlivě
+i~v~běžící službě a~společný test ověřil připojení s~MTU 517, notifikace a~zápisy z~tabletu, které
+dům uložil. Problémy, které se objevily až na hardwaru, se opravily (oddíl~\ref{sec:problemy-hw}).
+
+Řešení má tato omezení:
+\begin{itemize}
+  \item Vnitřní teplota je simulovaná a~topení, chlazení i~světlo zastupují LED. Dům nemá
+        fyzický model ani výkonové výstupy.
+  \item Čidlo BMP280 neměří vlhkost, a~vlhkost proto v~sestavě chybí.
+  \item Rozhraní nemá zabezpečení: připojit se a~měnit nastavení může kdokoli v~dosahu
+        (oddíl~\ref{sec:zabezpeceni}).
+  \item Raspberry Pi nemá hodiny reálného času. Bez připojení k~internetu musí čas nastavit tablet.
+  \item Aplikace drží historii grafu a~deník jen v~paměti, nejvýš 6~hodin a~200~událostí, a~po
+        zavření o~ně přijde.
+  \item Výsledky některých ručních zkoušek nejsou zaznamenané (tabulka~\ref{tab:hw-vysledky}).
+\end{itemize}
+
+Projekt jde rozšířit o~šifrované a~ověřené zápisy se spárováním tabletu, o~ukládání historie
+měření na Raspberry Pi a~její přenos do aplikace, o~skutečné akční členy (relé pro topení
+a~ventilátor, světelný pásek s~vlastním napájením), o~čidlo BME280 s~vlhkostí, kterou už obě
+části umějí zobrazit, a~o~hodiny reálného času. V~aplikaci by se hodilo upozornění na poruchu
+čidla nebo ztrátu spojení i~ve chvíli, kdy aplikace neběží na popředí.

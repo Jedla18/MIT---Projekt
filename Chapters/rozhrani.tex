@@ -3,8 +3,8 @@
 \label{chap:rozhrani}
 
 Rozhraní je smlouva mezi programem na Raspberry Pi a~mobilní aplikací: obě strany se podle něj
-staví a~testují samostatně. Domek je periferie BLE a~server GATT, tablet je centrála a~klient
-GATT~\cite{bt-core}. Data se přenášejí ve třech charakteristikách vlastní služby Domek jako JSON
+staví a~testují samostatně. Dům je periferie BLE a~server GATT, tablet je centrála a~klient
+GATT~\cite{bt-core}. Data se přenášejí ve třech charakteristikách vlastní služby chytrého domu jako JSON
 a~venkovní hodnoty navíc ve standardní službě Environmental Sensing (ESS)~\cite{bt-ess}. Kapitola
 vychází z~dokumentu \kod{docs/ble-rozhrani.md} v~repozitáři backendu; testy v~souboru
 \kod{tests/test_ble_format.py} hlídají, že jeho UUID, klíče, výchozí hodnoty, rozsahy, názvy
@@ -13,8 +13,8 @@ poruch a~příklady JSON odpovídají kódu.
 \section{Inzerce a~připojení}
 \label{sec:rozhrani-pripojeni}
 
-Domek se inzeruje pod názvem \kod{Termostat} a~v~inzerátu má jen krátké UUID služby
-Environmental Sensing \kod{0x181A}. Vlastní služba Domek má 128bitové UUID, které by se vedle
+Dům se inzeruje pod názvem \kod{Termostat} a~v~inzerátu má jen krátké UUID služby
+Environmental Sensing \kod{0x181A}. Vlastní služba chytrého domu má 128bitové UUID, které by se vedle
 názvu do reklamního paketu o~31 bajtech nevešlo; klient ji najde až po připojení při hledání
 služeb. Službu \kod{0x181A} může inzerovat i~jiné čidlo v~okolí, proto aplikace kontroluje, že
 název je přesně \kod{Termostat}. Párování ani šifrování není potřeba (důsledky popisuje
@@ -23,8 +23,8 @@ oddíl~\ref{sec:zabezpeceni}).
 Výchozí MTU protokolu ATT je 23~B a~notifikace pak unese jen MTU~$-$~3, tedy 20~B
 dat~\cite{bt-core}. Stav má podle délky čísel a~počtu poruch asi 270 až 340~B a~notifikace se na
 části nedělí, jen se ořízne, takže by klient dostal neúplný JSON. Aplikace si proto hned po
-připojení vyžádá MTU 517, se kterým notifikace unese 514~B, tedy každý JSON domku. Hodnoty
-domku mají nejvýš 512~B, což je největší délka hodnoty atributu~\cite{bt-core}; nejmenší
+připojení vyžádá MTU 517, se kterým notifikace unese 514~B, tedy každý JSON domu. Hodnoty
+domu mají nejvýš 512~B, což je největší délka hodnoty atributu~\cite{bt-core}; nejmenší
 použitelné MTU je tedy 515. Čtení Stavu a~Nastavení funguje i~při menším MTU: klient si dlouhou
 hodnotu přečte po částech (čtení s~posunem) a~server všechny části vrací z~téže hodnoty
 (oddíl~\ref{sec:ble-server}). Zápis do 512~B se s~MTU 517 vejde do jednoho požadavku.
@@ -46,7 +46,7 @@ charakteristiky nepodporují. Příkaz nejde číst ani odebírat.
 
 \begin{table}[H]
 \centering
-\caption{Služby a~charakteristiky domku}
+\caption{Služby a~charakteristiky domu}
 \label{tab:charakteristiky}
 \footnotesize
 \begin{tabular}{|p{2.7cm}|p{6.1cm}|p{2.1cm}|p{2.2cm}|}
@@ -61,7 +61,7 @@ Vlhkost & \kod{0x2A6F} & read, notify & uint16, 0,01~\% \\
 \hline
 Tlak & \kod{0x2A6D} & read, notify & uint32, 0,1~Pa \\
 \hline
-\multicolumn{4}{|l|}{\textbf{Domek}, UUID \kod{5bf00001-f758-4c41-a34e-bab58ce87673}} \\
+\multicolumn{4}{|l|}{\textbf{Chytrý dům}, UUID \kod{5bf00001-f758-4c41-a34e-bab58ce87673}} \\
 \hline
 Stav & \kod{5bf00010-f758-4c41-a34e-bab58ce87673} & read, notify & JSON, UTF-8 \\
 \hline
@@ -77,7 +77,7 @@ Příkaz & \kod{5bf00012-f758-4c41-a34e-bab58ce87673} & write & JSON, UTF-8 \\
 
 Stav, Nastavení i~Příkaz jsou JSON v~kódování UTF-8 bez BOM a~jejich kořenem je vždy objekt.
 Hodnota má nejvýš 512~bajtů (bajtů, ne znaků) a~delší zápis se odmítne; výchozí Nastavení má
-301~B a~nejdelší možné asi 383~B. Domek JSON kóduje kompaktně, bez mezer, a~nikdy do něj nezapíše
+301~B a~nejdelší možné asi 383~B. Dům JSON kóduje kompaktně, bez mezer, a~nikdy do něj nezapíše
 \kod{NaN} ani \kod{Infinity}; při čtení zápisu přijme i~JSON s~mezerami. Ve Stavu jsou vždy
 všechny klíče a~hodnota, která není k~dispozici, je \kod{null}. Texty (úsek dne, režim, názvy
 poruch, slovní příkazy) jsou malými písmeny a~bez diakritiky, do čitelné podoby je převádí
@@ -88,7 +88,7 @@ které nezná, a~nespoléhá na jejich pořadí.
 \section{Stav}
 \label{sec:rozhrani-stav}
 
-Charakteristika Stav dává při čtení i~v~notifikaci celý aktuální stav domku
+Charakteristika Stav dává při čtení i~v~notifikaci celý aktuální stav domu
 (tabulka~\ref{tab:stav}). Odpovídá slovníku z~metody \kod{Domek.stav()}.
 
 \begin{table}[H]
@@ -100,7 +100,7 @@ Charakteristika Stav dává při čtení i~v~notifikaci celý aktuální stav do
 \hline
 \textbf{Klíč} & \textbf{Typ} & \textbf{Jednotka} & \textbf{Význam} \\
 \hline
-\kod{cas} & text, \kod{null} & -- & čas domku \kod{YYYY-MM-DDTHH:MM:SS}, místní, bez časového
+\kod{cas} & text, \kod{null} & -- & čas domu \kod{YYYY-MM-DDTHH:MM:SS}, místní, bez časového
   pásma; \kod{null} jen před prvním krokem \\
 \hline
 \kod{usek} & text, \kod{null} & -- & \kod{den}, \kod{vecer} nebo \kod{noc} \\
@@ -140,7 +140,7 @@ Charakteristika Stav dává při čtení i~v~notifikaci celý aktuální stav do
 \end{table}
 
 Objekt \kod{svetlo} ukazuje, jak světlo \emph{má} svítit; \kod{rucne} je \kod{true}, když stav
-vybral člověk příkazem. Výpis~\ref{lst:stav-den} je Stav čtyřicet sekund po spuštění domku ve
+vybral člověk příkazem. Výpis~\ref{lst:stav-den} je Stav čtyřicet sekund po spuštění domu ve
 dne: venku je 14,5~°C, vnitřní teplota stoupá k~cíli 23~°C a~termostat topí. Další příklady jsou
 v~příloze~\ref{chap:priloha-json}.
 
@@ -286,7 +286,7 @@ vznikla, nebo do příkazu \kod{auto}. Příkaz \kod{{"svetlo":{"jas":0}}} je pl
 je zapnuté světlo, které nesvítí; ke zhasnutí slouží \kod{vypnout}.
 
 Čas se posílá přesně ve tvaru \kod{YYYY-MM-DDTHH:MM:SS} (19 znaků), jako místní čas tabletu bez
-časového pásma a~bez zlomků sekund. Domek čas s~časovým pásmem odmítne. Platný čas předá
+časového pásma a~bez zlomků sekund. Dům čas s~časovým pásmem odmítne. Platný čas předá
 nastavovači času (oddíl~\ref{sec:ovladace}); když se systémový čas nastavit nepodaří, zápis
 skončí chybou. Nový čas se projeví v~nejbližším Stavu a~podle něj se přepočítá úsek dne;
 odpočty se měří na monotonních hodinách, takže je skok času nerozbije.
@@ -335,7 +335,7 @@ Například $-5{,}5$~°C se zakóduje jako \kod{DA FD} a~23,05~°C jako \kod{01 
 
 Server posílá notifikace jen charakteristikám, které klient odebírá, a~každá notifikace nese
 celou hodnotu. Kdy chodí, ukazuje tabulka~\ref{tab:notifikace}. Hodnoty ESS chodí vždy spolu se
-Stavem, ze stejného stavu domku. Notifikace Nastavení chodí po každém platném zápisu Nastavení,
+Stavem, ze stejného stavu domu. Notifikace Nastavení chodí po každém platném zápisu Nastavení,
 i~po prázdném \kod{{}} a~i~když zapisovalo jiné zařízení, a~po příkazu světla, který změnil barvu
 nebo jas. Po zapnutí odběru nepřijde žádná, proto si klient nastavení přečte.
 
@@ -348,13 +348,13 @@ nebo jas. Po zapnutí odběru nepřijde žádná, proto si klient nastavení př
 \hline
 \textbf{Událost} & \textbf{Notifikace} \\
 \hline
-každou sekundu, po kroku domku & Stav a~ESS, i~když se nic nezměnilo; klient podle toho pozná, že
-  domek žije \\
+každou sekundu, po kroku domu & Stav a~ESS, i~když se nic nezměnilo; klient podle toho pozná, že
+  dům žije \\
 \hline
 změna pohybu (kontrola po 100~ms) & Stav a~ESS hned, takže pohyb i~noční světlo se projeví
   skoro okamžitě \\
 \hline
-platný zápis Nastavení & Nastavení a~potom Stav a~ESS; před Stavem proběhne krok domku, takže
+platný zápis Nastavení & Nastavení a~potom Stav a~ESS; před Stavem proběhne krok domu, takže
   Stav už změnu obsahuje \\
 \hline
 platný Příkaz & Stav a~ESS; když příkaz \kod{svetlo} změnil uloženou barvu nebo jas, přijde
@@ -363,7 +363,7 @@ platný Příkaz & Stav a~ESS; když příkaz \kod{svetlo} změnil uloženou bar
 \end{tabular}
 \end{table}
 
-Změny, které domek způsobí sám (změna úseku dne, rozsvícení a~zhasnutí světla, zapnutí topení,
+Změny, které dům způsobí sám (změna úseku dne, rozsvícení a~zhasnutí světla, zapnutí topení,
 nové měření), se projeví nejpozději v~další sekundové notifikaci. Aplikace proto může data, ke
 kterým 3~s nepřišla žádná notifikace Stavu, považovat za stará.
 
@@ -371,7 +371,7 @@ kterým 3~s nepřišla žádná notifikace Stavu, považovat za stará.
 \label{sec:rozhrani-chyby}
 
 Pole \kod{chyby} ve Stavu obsahuje názvy právě trvajících poruch, abecedně a~bez opakování
-(tabulka~\ref{tab:chyby}). Prázdné pole znamená, že vše funguje. Domek se kvůli poruše
+(tabulka~\ref{tab:chyby}). Prázdné pole znamená, že vše funguje. Dům se kvůli poruše
 nezastaví a~porucha zmizí sama, jakmile věc zase funguje.
 
 \begin{table}[H]
@@ -417,8 +417,9 @@ takže v~Androidu přijde stav různý od \kod{GATT_SUCCESS}. Nic se nezmění, 
 běží dál.
 
 Chybová odpověď ATT nese jen kód, text důvodu se přes Bluetooth nepřenáší. Aplikace proto
-hodnoty kontroluje předem podle tabulek v~této kapitole, při chybě ukáže obecnou chybu a~po
-chybě zápisu Nastavení si nastavení znovu přečte, aby zobrazovala to, co skutečně platí.
+hodnoty kontroluje předem podle tabulek v~této kapitole, důvod odmítnutí odvodí z~toho, co
+poslala (oddíl~\ref{sec:app-zapis}), a~po chybě zápisu Nastavení si nastavení znovu přečte, aby
+zobrazovala to, co skutečně platí.
 
 \section{Zabezpečení}
 \label{sec:zabezpeceni}
@@ -431,11 +432,11 @@ a~změna vydrží i~restart, protože se nastavení ukládá. Příkazem \kod{ca
 příkazu \kod{date} kontroluje a~příkaz se volá bez shellu, takže přes něj nejde spustit jiný
 program. Ze Stavu lze číst údaj o~pohybu a~\enquote{nikdo doma}, tedy jestli je někdo přítomen,
 a~opakované zápisy Nastavení pokaždé zapíší soubor na paměťovou kartu. Všechny vstupy se přitom
-kontrolují (typy, rozsahy, délka do 512~B), takže neplatný zápis domek nerozbije.
+kontrolují (typy, rozsahy, délka do 512~B), takže neplatný zápis dům nerozbije.
 
 Možným zlepšením je vyžadovat pro zápis do Nastavení a~Příkazu šifrované, případně i~ověřené
 spojení. BlueZ to umí podle příznaků charakteristiky (například \kod{encrypt-write} nebo
 \kod{encrypt-authenticated-write}~\cite{bluez-gatt}), které bluezero předává při vytvoření
-charakteristiky. Tablet by se pak s~domkem musel jednou spárovat a~na Raspberry Pi by musela
-běžet obsluha párování, která ho v~BlueZ potvrdí. Pro ukázku se párování nepoužilo, aby se domek
+charakteristiky. Tablet by se pak s~domem musel jednou spárovat a~na Raspberry Pi by musela
+běžet obsluha párování, která ho v~BlueZ potvrdí. Pro ukázku se párování nepoužilo, aby se dům
 dal předvést i~z~cizího tabletu nebo z~aplikace nRF Connect bez přípravy.

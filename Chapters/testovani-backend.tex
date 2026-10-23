@@ -24,7 +24,7 @@ Rozdělení do souborů ukazuje tabulka~\ref{tab:testy}.
   čistou logiku: typy a~rozsahy nastavení, atomické uložení, úseky dne, tepelný model
   a~hysterezi, automatiku světla, řádky displeje \\
 \hline
-\kod{jadro}, \kod{simulace} & 164 & krok domku, stav, příkazy, poruchy a~kontrolku pohybu se
+\kod{jadro}, \kod{simulace} & 164 & krok domu, stav, příkazy, poruchy a~kontrolku pohybu se
   simulovaným hardwarem \\
 \hline
 \kod{ble_format}, \kod{ble_server} & 128 & kódování ESS a~JSON, soulad dokumentu rozhraní
@@ -81,7 +81,7 @@ přestal prodlužovat dobu svícení, testy nezachytily, a~proto přibyl test, k
 
 \subsection{Simulace na PC}
 
-Režim \kod{--simulace} (oddíl~\ref{sec:simulace}) rozběhne celý domek na PC se simulovanými
+Režim \kod{--simulace} (oddíl~\ref{sec:simulace}) rozběhne celý dům na PC se simulovanými
 čidly a~každou sekundu vypíše stav. Ověřuje se v~něm chování v~čase: že vnitřní teplota
 stoupá k~cíli a~termostat se po jeho dosažení vypíná, že úsek dne odpovídá času a~že stav má
 stejné klíče jako Stav v~BLE.
@@ -164,7 +164,7 @@ nemohly:
   \item[Prázdný config.txt po nečistém vypnutí.] Raspberry Pi přišlo o~napájení krátce po
         instalaci, při které \kod{raspi-config} zapsal zapnutí I\textsuperscript{2}C do
         \kod{/boot/firmware/config.txt}. Soubor na oddílu FAT zůstal prázdný (0~bajtů),
-        I\textsuperscript{2}C se po startu nezapnulo a~domek hlásil poruchy \kod{meteo},
+        I\textsuperscript{2}C se po startu nezapnulo a~dům hlásil poruchy \kod{meteo},
         \kod{osvetleni} i~\kod{displej}; v~logu byla chyba
         \kod{No such file or directory: /dev/i2c-1}. Oprava byla
         \kod{sudo raspi-config nonint do_i2c 0}, \kod{sync} a~restart. Instalační skript od té

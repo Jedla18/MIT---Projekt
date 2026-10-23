@@ -1,4 +1,4 @@
-# Dokumentace projektu MITŘ: chytrý domek ovládaný přes Bluetooth LE
+# Dokumentace projektu MITŘ: chytrý dům ovládaný přes Bluetooth LE
 
 Dokumentace semestrálního projektu v LaTeXu, šablona VŠB-TUO FEI (`diploma.cls`). Projekt má dvě
 části: backend na Raspberry Pi (Python) a mobilní aplikaci pro Android (Kotlin). Každá část píše
@@ -24,7 +24,8 @@ do svých souborů.
 | `Chapters/uvod.tex`, `Chapters/navrh.tex` | backend |
 | `Chapters/hardware.tex`, `Chapters/backend.tex`, `Chapters/rozhrani.tex` | backend |
 | `Chapters/testovani.tex` (jen rámec kapitoly), `Chapters/testovani-backend.tex` | backend |
-| `Chapters/zaver.tex` (až budou hotové obě části), `Chapters/prilohy.tex` | backend |
+| `Chapters/prilohy.tex` | backend |
+| `Chapters/zaver.tex` (shrnuje obě části) | aplikace |
 | `zkratky.tex` (společné zkratky), `literatura.bib`, `Figures/` (kromě `Figures/aplikace/`) | backend |
 | `Chapters/aplikace.tex` | aplikace |
 | `Chapters/testovani-aplikace.tex` | aplikace |
@@ -51,7 +52,9 @@ odkazuje (`\ref{chap:rozhrani}`) a neopakuje ho.
   a `\kod{{"svetlo":"zapnout"}}`. Podtržítka a uvozovky se neescapují, `%` a `#` uvnitř
   `\kod` být nesmí.
 - **Ukázky kódu.** `\begin{lstlisting}[language=Python]`, `language=json` nebo `language=kotlin`,
-  s `caption=` a `label=lst:...`. Ukázky mají být krátké, jen to podstatné.
+  s `caption=` a `label=lst:...`. Ukázky mají být krátké, jen to podstatné. Česká písmena
+  s diakritikou v ukázkách převádí na akcenty nastavení `literate` v `main.tex`; jiné znaky mimo
+  ASCII (pomlčky, uvozovky, šipky) do ukázek nepatří.
 - **Tabulky.** Jako v šabloně: `\begin{table}[H]`, `\centering`, popisek **nad** tabulkou
   (`\caption`, `\label`), sloupce `|p{...}|` se svislými čarami a `\hline`.
 - **Obrázky.** `\begin{figure}[H]`, popisek **pod** obrázkem. Soubory patří do `Figures/`

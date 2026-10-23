@@ -2,7 +2,7 @@
 \chapter{Hardware a~zapojení}
 \label{chap:hardware}
 
-Domek je sestavený z~modulů na nepájivém poli, které jsou připojené k~Raspberry Pi 3B+.
+Dům je sestavený z~modulů na nepájivém poli, které jsou připojené k~Raspberry Pi 3B+.
 Raspberry Pi má čtyřjádrový 64bitový procesor Broadcom BCM2837B0 s~frekvencí 1,4~GHz, vestavěný
 Bluetooth 4.2 s~podporou BLE a~rozšířenou 40pinovou lištu GPIO; napájí se zdrojem 5~V přes
 konektor micro-USB a~výrobce uvádí proud 2,5~A~\cite{rpi3bplus}.
@@ -15,12 +15,12 @@ BCM (Broadcom), které používá i~program; fyzické piny lišty jsou v~tabulce
 
 \begin{table}[H]
 \centering
-\caption{Součástky domku}
+\caption{Součástky domu}
 \label{tab:soucastky}
 \small
 \begin{tabular}{|p{3.2cm}|p{3.9cm}|p{3.3cm}|p{2.5cm}|}
 \hline
-\textbf{Součástka} & \textbf{Úloha v~domku} & \textbf{Rozhraní} & \textbf{Napájení} \\
+\textbf{Součástka} & \textbf{Úloha v~domě} & \textbf{Rozhraní} & \textbf{Napájení} \\
 \hline
 Raspberry Pi 3B+ & řídicí jednotka, periferie BLE & -- & 5~V, micro-USB \\
 \hline
@@ -29,7 +29,7 @@ BMP280 (prodávaný jako BME280) & venkovní teplota a~tlak & I\textsuperscript{
 \hline
 TSL2561 & venkovní osvětlení & I\textsuperscript{2}C, adresa \kod{0x39} & 3,3~V \\
 \hline
-displej SSD1306, OLED 128~$\times$~64 bodů & stav domku & I\textsuperscript{2}C, adresa
+displej SSD1306, OLED 128~$\times$~64 bodů & stav domu & I\textsuperscript{2}C, adresa
   \kod{0x3C} & 3,3~V \\
 \hline
 HC-SR501 & čidlo pohybu (PIR) & vstup GPIO24 & 5~V, výstup 3,3~V \\
@@ -37,7 +37,7 @@ HC-SR501 & čidlo pohybu (PIR) & vstup GPIO24 & 5~V, výstup 3,3~V \\
 modul LED semafor & kontrolky topení, chlazení a~pohybu & výstupy GPIO17, GPIO27, GPIO22 &
   z~výstupů GPIO \\
 \hline
-RGB LED se společnou katodou & světlo domku & výstupy PWM GPIO16, GPIO20, GPIO21 & z~výstupů
+RGB LED se společnou katodou & světlo domu & výstupy PWM GPIO16, GPIO20, GPIO21 & z~výstupů
   GPIO přes rezistory \\
 \hline
 \end{tabular}
@@ -122,7 +122,7 @@ přímo z~výstupů GPIO, každá přes svůj rezistor.
         pozná podle ID a~vlhkost hlásí jako neznámou (oddíl~\ref{sec:ovladace}). Čidlo má být
         co nejdál od Raspberry Pi, které hřeje a~zkreslovalo by měření.
   \item[TSL2561 nesmí mířit na RGB LED.] Čidlo osvětlení má vývod ADDR nezapojený, a~proto
-        adresu \kod{0x39}. Kdyby svítilo na čidlo světlo domku, automatika by se rozkmitala:
+        adresu \kod{0x39}. Kdyby svítilo na čidlo světlo domu, automatika by se rozkmitala:
         světlo se při šeru rozsvítí, čidlo naměří jeho světlo, šero skončí a~světlo zhasne.
   \item[Nastavení HC-SR501.] Propojka je v~poloze H, takže výstup zůstává v~logické 1, dokud se
         před čidlem někdo hýbe. Trimr doby je na minimu (výstup pak drží asi 3~s) a~trimr

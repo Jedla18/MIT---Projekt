@@ -7,14 +7,14 @@
 
 Z~cíle projektu vyplynuly tyto požadavky:
 \begin{itemize}
-  \item domek měří skutečnou teplotu, tlak, osvětlení a~pohyb a~hodnoty posílá do tabletu,
+  \item dům měří skutečnou teplotu, tlak, osvětlení a~pohyb a~hodnoty posílá do tabletu,
   \item vnitřní teplota domu se simuluje a~termostat s~hysterezí podle ní topí nebo chladí;
         topení a~chlazení ukazují kontrolky,
   \item světlo se řídí automaticky podle denní doby, šera a~pohybu, z~tabletu ho jde zapnout,
         vypnout a~nastavit mu barvu a~jas,
   \item nastavení (cílové teploty, začátky úseků dne, prahy a~časy) se mění z~tabletu a~vydrží
         restart,
-  \item domek běží sám po zapnutí napájení, bez tabletu i~bez připojení k~internetu,
+  \item dům běží sám po zapnutí napájení, bez tabletu i~bez připojení k~internetu,
   \item vše se napájí z~Raspberry Pi, bez externího zdroje.
 \end{itemize}
 
@@ -22,7 +22,7 @@ Z~cíle projektu vyplynuly tyto požadavky:
 
 Systém má tři vrstvy (obrázek~\ref{fig:architektura}). Čidla a~výstupy jsou připojené přímo
 k~Raspberry Pi přes sběrnici I\textsuperscript{2}C a~piny GPIO. Program na Raspberry Pi
-(backend) je čte, řídí logiku domku a~stav nabízí přes BLE. Tablet s~mobilní aplikací
+(backend) je čte, řídí logiku domu a~stav nabízí přes BLE. Tablet s~mobilní aplikací
 (frontend) je klient BLE: stav čte a~odebírá jeho notifikace, zapisuje nastavení a~příkazy.
 
 \begin{figure}[H]
@@ -36,7 +36,7 @@ k~Raspberry Pi přes sběrnici I\textsuperscript{2}C a~piny GPIO. Program na Ras
   obousmerna/.style={{Stealth[length=2.2mm]}-{Stealth[length=2.2mm]}, thick},
 ]
   % Raspberry Pi a program
-  \node[blok, minimum width=4.6cm] (jadro) {Jádro domku\\(termostat, světlo, nastavení)};
+  \node[blok, minimum width=4.6cm] (jadro) {Jádro domu\\(termostat, světlo, nastavení)};
   \node[blok, minimum width=4.6cm, below=0.35cm of jadro] (ble)
     {BLE server (BlueZ, bluezero)};
   \node[blok, minimum width=4.6cm, above=0.35cm of jadro] (ovladace)
@@ -68,18 +68,18 @@ k~Raspberry Pi přes sběrnici I\textsuperscript{2}C a~piny GPIO. Program na Ras
     node[below, align=center, font=\sffamily\scriptsize] {GATT: Stav, Nastavení,\\Příkaz, ESS}
     (tablet.west);
 \end{tikzpicture}
-\caption{Architektura chytrého domku}
+\caption{Architektura chytrého domu}
 \label{fig:architektura}
 \end{figure}
 
 \section{Rozdělení odpovědností}
 
-Veškerá logika domku je na Raspberry Pi. Domek tak funguje i~bez tabletu: termostat reguluje,
+Veškerá logika domu je na Raspberry Pi. Dům tak funguje i~bez tabletu: termostat reguluje,
 světlo se rozsvěcí podle denní doby a~pohybu a~stav je vidět na displeji. Aplikace je tenký
-klient, který stav zobrazuje a~posílá jen změny nastavení a~příkazy; o~tom, jak domek reaguje,
+klient, který stav zobrazuje a~posílá jen změny nastavení a~příkazy; o~tom, jak dům reaguje,
 rozhoduje backend. Díky tomu stačí, aby obě strany dodržely komunikační rozhraní popsané
 v~kapitole~\ref{chap:rozhrani}, a~každá se může vyvíjet a~testovat samostatně: backend proti
-falešnému hardwaru a~v~režimu simulace, aplikace proti simulovanému domku.
+falešnému hardwaru a~v~režimu simulace, aplikace proti simulovanému domu.
 
 \section{Klíčová rozhodnutí}
 

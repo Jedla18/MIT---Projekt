@@ -4,10 +4,10 @@
 \chapter{Mobilní aplikace pro Android}
 \label{chap:aplikace}
 
-Mobilní aplikace \enquote{Chytrý domek} je klientská část projektu. Připojí se k~domku přes
-Bluetooth Low Energy, zobrazuje jeho stav a~posílá změny nastavení a~příkazy. O~tom, jak domek
+Mobilní aplikace \enquote{Chytrý dům} je klientská část projektu. Připojí se k~domu přes
+Bluetooth Low Energy, zobrazuje jeho stav a~posílá změny nastavení a~příkazy. O~tom, jak dům
 reaguje, rozhoduje backend (kapitola~\ref{chap:navrh}). Aplikace jeho logiku neopakuje
-a~s~domkem komunikuje přesně podle rozhraní z~kapitoly~\ref{chap:rozhrani}, proto se formát dat
+a~s~domem komunikuje přesně podle rozhraní z~kapitoly~\ref{chap:rozhrani}, proto se formát dat
 v~této kapitole znovu nepopisuje. Kapitola ukazuje, jak aplikace s~rozhraním pracuje, jak
 vypadají její obrazovky a~jak ji jde používat i~bez Raspberry Pi.
 
@@ -20,7 +20,7 @@ vznikly automatickými testy s~ukázkovými daty (oddíl~\ref{sec:testovani-apli
 
 Aplikace je napsaná v~jazyce Kotlin. Uživatelské rozhraní stojí na knihovně Jetpack
 Compose~\cite{app-compose} s~komponentami Material Design~3~\cite{app-material3}. Spojení
-s~domkem obsluhuje přímo rozhraní pro Bluetooth LE ze sady Android SDK (Software Development
+s~domem obsluhuje přímo rozhraní pro Bluetooth LE ze sady Android SDK (Software Development
 Kit)~\cite{app-android-ble}. Knihovnu třetí strany pro Bluetooth aplikace nepoužívá.
 Tabulka~\ref{tab:app-technologie} shrnuje jazyk, knihovny a~nástroje s~verzemi.
 
@@ -56,7 +56,7 @@ aplikací pro Android~\cite{app-architektura} (obrázek~\ref{fig:app-architektur
 \begin{itemize}
   \item \textbf{zdroj dat} (rozhraní \kod{HouseDataSource}) zpřístupňuje stav spojení, poslední
         Stav a~poslední Nastavení jako toky \kod{StateFlow}~\cite{app-stateflow} a~umí zapsat
-        nastavení nebo poslat příkaz; má dvě implementace, klienta Bluetooth LE a~simulovaný domek,
+        nastavení nebo poslat příkaz; má dvě implementace, klienta Bluetooth LE a~simulovaný dům,
   \item \textbf{ViewModel} (\kod{HouseViewModel})~\cite{app-viewmodel} skládá toky zdroje do
         jediného neměnného stavu obrazovek \kod{HouseUiState}, řídí zápisy a~vede deník událostí;
         přežije otočení displeje i~návrat do aplikace,
@@ -83,7 +83,7 @@ nebo české formátování čísel, je v~samostatném balíku a~testuje se bez 
   \node[blok, minimum width=7.4cm, below=1.7cm of ui] (vm)
     {HouseViewModel\\stav obrazovek, zápisy, deník};
   \node[blok, minimum width=3.4cm, below=2.0cm of vm, xshift=-2.0cm] (sim)
-    {Simulovaný domek\\{\scriptsize SimulatedHouseDataSource}};
+    {Simulovaný dům\\{\scriptsize SimulatedHouseDataSource}};
   \node[blok, minimum width=3.4cm, below=2.0cm of vm, xshift=2.0cm] (ble)
     {Klient Bluetooth LE\\{\scriptsize BleHouseDataSource}};
   \node[skupina, fit=(sim)(ble), label={below:zdroj dat HouseDataSource}] (zdroj) {};
@@ -122,7 +122,7 @@ interface HouseDataSource {
 \end{lstlisting}
 
 Výsledek zápisu \kod{WriteResult} rozlišuje čtyři případy: zápis prošel, Raspberry ho odmítlo
-(s~kódem chyby ATT), nepřišla odpověď a~domek není připojený. Podle nich aplikace volí hlášku
+(s~kódem chyby ATT), nepřišla odpověď a~dům není připojený. Podle nich aplikace volí hlášku
 pro uživatele (oddíl~\ref{sec:app-zapis}). Tabulka~\ref{tab:app-baliky} ukazuje rozdělení kódu
 do balíků.
 
@@ -137,7 +137,7 @@ do balíků.
 \kod{data.model} & datové třídy Stavu, Nastavení a~příkazů a~jejich převod z~a~do JSON \\ \hline
 \kod{data.source} & rozhraní zdroje dat, stavy spojení, výsledky zápisu \\ \hline
 \kod{domain} & logika bez Androidu: úseky dne, prahy termostatu, texty světla a~chyb, formát čísel \\ \hline
-\kod{sim} & simulovaný domek a~pravidla, podle kterých Raspberry Pi přijímá zápisy \\ \hline
+\kod{sim} & simulovaný dům a~pravidla, podle kterých Raspberry Pi přijímá zápisy \\ \hline
 \kod{viewmodel} & \kod{HouseViewModel}, stav obrazovek, deník, historie grafu, hlášky \\ \hline
 \kod{ui} & obrazovky a~společné komponenty v~Compose, barevné schéma \\ \hline
 \end{tabular}
@@ -146,7 +146,7 @@ do balíků.
 \section{Komunikace přes Bluetooth LE}
 \label{sec:app-ble}
 
-Klient Bluetooth LE (\kod{BleHouseDataSource}) hledá domek, připojuje se k~němu a~udržuje
+Klient Bluetooth LE (\kod{BleHouseDataSource}) hledá dům, připojuje se k~němu a~udržuje
 spojení. Hledání obstarává systémová třída \kod{BluetoothLeScanner}, spojení a~operace GATT
 třída \kod{BluetoothGatt}~\cite{app-android-gatt}. Kromě nich aplikace nepoužívá žádné části
 Androidu specifické pro Bluetooth.
@@ -166,7 +166,7 @@ Když uživatel oprávnění zamítne natrvalo, systém už dialog znovu neuká�
 nabídne otevření nastavení aplikace. Všechny obrazovky spojení nabízejí také
 \enquote{Spustit simulaci}.
 
-\subsection{Hledání a~výběr domku}
+\subsection{Hledání a~výběr domu}
 
 Hledání filtruje zařízení podle názvu \enquote{Termostat} a~běží v~režimu s~nejkratší
 odezvou~\cite{app-android-ble-hledani}. Po prvním nálezu aplikace ještě 2~s čeká na další
@@ -181,13 +181,13 @@ za 30~s), proto aplikace mezi dvěma starty hledání nechává aspoň 6~s.
 \begin{minipage}[t]{0.32\textwidth}
   \centering
   \includegraphics[width=\linewidth]{Figures/aplikace/hledani-domku.png}
-  \caption{Hledání domku}
+  \caption{Hledání domu}
   \label{fig:app-hledani}
 \end{minipage}\hspace{0.08\textwidth}%
 \begin{minipage}[t]{0.32\textwidth}
   \centering
   \includegraphics[width=\linewidth]{Figures/aplikace/vyber-domku.png}
-  \caption{Výběr z~více domků v~dosahu}
+  \caption{Výběr z~více domů v~dosahu}
   \label{fig:app-vyber}
 \end{minipage}
 \end{figure}
@@ -197,8 +197,8 @@ za 30~s), proto aplikace mezi dvěma starty hledání nechává aspoň 6~s.
 Spojení musí vzniknout do 15~s. Pak aplikace v~pevném pořadí připraví spojení a~na každý krok
 čeká nejvýš 10~s:
 \begin{enumerate}
-  \item výměna MTU, aplikace žádá 517~B,
-  \item hledání služeb, tedy služby Domek a~jejích tří charakteristik,
+  \item výměna MTU, aplikace žádá MTU 517,
+  \item hledání služeb, tedy služby chytrého domu a~jejích tří charakteristik,
   \item zapnutí notifikací Stavu a~potom Nastavení zápisem \kod{01 00} do CCCD,
   \item přečtení Nastavení a~potom Stavu.
 \end{enumerate}
@@ -206,14 +206,14 @@ Potom už Stav přichází sám každou sekundu a~aplikace jen zapisuje a~jednou
 signálu, kterou ukazuje v~Nastavení.
 
 Celý Stav o~velikosti až 512~B se musí vejít do jedné notifikace, která unese MTU zmenšené
-o~3~B záhlaví ATT. Když telefon vyjedná MTU menší než 515~B, je to proto chyba spojení. Některé
-telefony ale změnu MTU nepotvrdí, když je MTU už vyjednané (Android~14 si 517~B vyjedná sám).
+o~3~B záhlaví ATT. Když telefon vyjedná MTU menší než 515, je to proto chyba spojení. Některé
+telefony ale změnu MTU nepotvrdí, když je MTU už vyjednané (Android~14 si MTU 517 vyjedná sám).
 V~tom případě aplikace pokračuje dál.
 
 Android si pamatuje služby zařízení, a~po výměně programu na Raspberry Pi tak může vidět jejich
-starou podobu. Když aplikace službu Domek nenajde, vymaže tuto paměť skrytou metodou
+starou podobu. Když aplikace službu chytrého domu nenajde, vymaže tuto paměť skrytou metodou
 \kod{BluetoothGatt.refresh()}, kterou volá přes reflexi, a~služby hledá ještě jednou. Teprve
-potom ukáže obrazovku \enquote{Tohle zařízení není domek}.
+potom ukáže obrazovku \enquote{Tohle zařízení není chytrý dům}.
 
 \subsection{Fronta operací a~časové limity}
 
@@ -298,7 +298,7 @@ Odmítnutý zápis aplikace vysvětlí hláškou ve tvaru \enquote{Raspberry zm�
 nezměnilo.} Důvod odvodí z~toho, co poslala, například dva stejné začátky úseků. Potom
 Nastavení přečte znovu, aby ukazovala, co opravdu platí. Bez odpovědi do 5~s zobrazí
 \enquote{Raspberry neodpovědělo. Změna se možná neprovedla.} a~bez spojení
-\enquote{Domek není připojený, změna se neodeslala.} Hlášky se ukazují dole na obrazovce
+\enquote{Dům není připojený, změna se neodeslala.} Hlášky se ukazují dole na obrazovce
 s~tlačítkem OK a~zapisují se i~do deníku.
 
 \subsection{Barva a~jas světla}
@@ -311,7 +311,7 @@ zůstane zhasnuté. Zapnutí a~vypnutí zůstává na tlačítkách.
 
 Posuvník jasu zapisuje během tažení nejvýš jednou za 150~ms. Hodnoty, které mezitím přepsala
 novější, se zahodí a~po puštění vždy odejde ta poslední. Raspberry Pi podle rozhraní přebarví
-svítící světlo nejpozději v~dalším kroku domku, tedy do 1~s. Aplikace proto vybranou barvu
+svítící světlo nejpozději v~dalším kroku domu, tedy do 1~s. Aplikace proto vybranou barvu
 ukazuje, dokud ji nepotvrdí Nastavení a~u~svítícího světla i~Stav, nejdéle 3~s. Náhled tak
 mezi oběma notifikacemi neukáže na okamžik starou barvu. Když Nastavení oba klíče nemá (starší
 program na Raspberry Pi), aplikace pošle místo zápisu příkaz světla.
@@ -346,12 +346,12 @@ spojení (obrázek~\ref{fig:app-hledani}). Deník a~Nastavení jsou dostupné v�
 \textbf{Štítek} & \textbf{Kdy se ukazuje} \\ \hline
 Připojeno & spojení běží a~Stav je čerstvý \\ \hline
 Stará data $\cdot$ N~s & Stav nepřišel déle než 3~s \\ \hline
-Hledám\dots & aplikace hledá domek \\ \hline
-Vyber domek & v~dosahu je víc domků \\ \hline
+Hledám\dots & aplikace hledá dům \\ \hline
+Vyber dům & v~dosahu je víc domů \\ \hline
 Připojuji\dots & navazování a~příprava spojení \\ \hline
 Odpojeno $\cdot$ znovu za N~s & spojení se přerušilo, aplikace čeká na další pokus \\ \hline
 Odpojeno & spojení ukončil uživatel \\ \hline
-Simulace & běží simulovaný domek \\ \hline
+Simulace & běží simulovaný dům \\ \hline
 Chybí oprávnění, Bluetooth vypnutý, Poloha vypnutá, Bez Bluetooth, Neznámé zařízení &
   připojení brání uvedená překážka \\ \hline
 \end{tabular}
@@ -369,7 +369,7 @@ drží v~paměti nejvýš 6~hodin a~kde mezi dvěma Stavy uplynulo víc než 5~s
 
 Dlaždice pod grafem ukazují venkovní teplotu, vlhkost, tlak, osvětlení s~prahem šera, poslední
 pohyb a~stav světla. Klepnutí na dlaždici světla otevře záložku Světlo. Nad horní kartou se
-podle potřeby objeví karty s~poruchami čidel, se starými daty, s~odpojeným domkem nebo
+podle potřeby objeví karty s~poruchami čidel, se starými daty, s~odpojeným domem nebo
 s~rozdílem hodin (obrázky~\ref{fig:app-poruchy} a~\ref{fig:app-stara-data} v~příloze).
 
 \begin{figure}[H]
@@ -430,7 +430,7 @@ Raspberry tuto volbu zatím nepodporuje.
 
 \subsection{Deník}
 
-Deník (obrázek~\ref{fig:app-denik}) zapisuje, co se v~domku stalo, od chvíle, kdy aplikace
+Deník (obrázek~\ref{fig:app-denik}) zapisuje, co se v~domě stalo, od chvíle, kdy aplikace
 dostala první data. Události aplikace odvozuje z~rozdílu dvou po sobě jdoucích Stavů
 a~Nastavení a~ze svých vlastních akcí:
 \begin{itemize}
@@ -476,7 +476,7 @@ s~24hodinovým ciferníkem nebo tlačítkem \enquote{Teď}, které začátek pos
 Raspberry Pi. Tlačítko \enquote{Vrátit původní časy} vrátí časy z~doby před první změnou.
 Karta \enquote{Čas Raspberry} porovnává hodiny Raspberry Pi a~telefonu a~nabízí
 \enquote{Nastavit čas podle telefonu}. Karta \enquote{Zdroj dat} přepíná mezi Raspberry Pi
-a~simulací a~u~připojeného domku ukazuje adresu, sílu signálu a~vyjednané MTU. Zdroj se mezi
+a~simulací a~u~připojeného domu ukazuje adresu, sílu signálu a~vyjednané MTU. Zdroj se mezi
 spuštěními neukládá, aplikace vždy začíná s~Raspberry Pi.
 
 \subsection{Velikost obrazovky a~přístupnost}
@@ -496,20 +496,20 @@ nastavením systému.
 \label{fig:app-tablet-prehled}
 \end{figure}
 
-\section{Simulovaný domek}
+\section{Simulovaný dům}
 \label{sec:app-simulace}
 
-Simulovaný domek (\kod{SimulatedHouseDataSource}) implementuje stejné rozhraní jako klient
-Bluetooth LE, takže obrazovky s~ním pracují stejně. Model domku počítá po sekundách podle
+Simulovaný dům (\kod{SimulatedHouseDataSource}) implementuje stejné rozhraní jako klient
+Bluetooth LE, takže obrazovky s~ním pracují stejně. Model domu počítá po sekundách podle
 pravidel backendu: termostat se stejnými prahy topí a~chladí rychlostí 0,05~°C za sekundu, bez
 topení a~chlazení se vnitřní teplota blíží venkovní, úseky dne se určují podle začátků
 z~Nastavení a~automatika světla počítá se šerem, nočním světlem a~ruční volbou do konce úseku
 dne. Zápisy a~příkazy simulace kontroluje podle stejných pravidel jako Raspberry Pi. Neplatný
-zápis odmítne stejně jako skutečný domek, takže v~simulaci jde vyzkoušet i~hlášky o~odmítnutí.
+zápis odmítne stejně jako skutečný dům, takže v~simulaci jde vyzkoušet i~hlášky o~odmítnutí.
 
 Simulace slouží k~vývoji a~předvedení bez hardwaru. Zapne se tlačítkem \enquote{Spustit
 simulaci} na obrazovce spojení nebo volbou \enquote{Simulace} v~Nastavení. Na Přehledu pak přibude karta
-\enquote{Ovládání simulace} s~tlačítky, která nahrazují zásahy do skutečného domku
+\enquote{Ovládání simulace} s~tlačítky, která nahrazují zásahy do skutečného domu
 (tabulka~\ref{tab:app-simulace}, obrázek~\ref{fig:app-simulace} v~příloze).
 
 \begin{table}[H]
@@ -523,7 +523,7 @@ Zahřát čidlo & venkovní čidlo hlásí 30~s o~8~°C víc, vnitřní teplota 
   & spuštění chlazení \\ \hline
 Zakrýt čidlo světla & osvětlení je 30~s nejvýš 5~lx & šero ve dne, rozsvícení automatikou \\ \hline
 Pohyb & čidlo pohybu hlásí pohyb 3~s & noční světlo, \enquote{Nikdo doma}, deník \\ \hline
-Porucha BME280 & zapne nebo vypne poruchu čidla teploty, vlhkosti a~tlaku
+Porucha BME280 & zapne nebo vypne poruchu čidla teploty, vlhkosti a~tlaku (\kod{meteo})
   & kartu poruchy a~zastavený termostat \\ \hline
 Výpadek dat & 10~s nepřijde žádný Stav & stará data \\ \hline
 \end{tabular}

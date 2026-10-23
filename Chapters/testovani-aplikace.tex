@@ -4,7 +4,7 @@
 \label{sec:testovani-aplikace}
 
 Aplikace se testuje na třech úrovních: automatickými testy na počítači, ručně v~telefonu proti
-simulovanému domku a~se skutečným Raspberry Pi. Nová funkce i~oprava chyby začínala testem,
+simulovanému domu a~se skutečným Raspberry Pi. Nová funkce i~oprava chyby začínala testem,
 který bez změny kódu selhal, a~teprve potom vznikl kód, se kterým test prošel.
 
 \subsection{Automatické testy}
@@ -32,11 +32,11 @@ obrazovky & 457 & texty a~stavy prvků, akce po klepnutí, zašedlé ovladače, 
   a~tabletu, texty při zvětšeném písmu \\ \hline
 ViewModel & 252 & zpoždění a~slučování zápisů, potvrzení do 3~s, hlášky po chybě, deník, historie
   grafu \\ \hline
-simulace & 167 & pravidla domku podle rozhraní: termostat, automatika světla, úseky dne, odmítnutí
+simulace & 167 & pravidla domu podle rozhraní: termostat, automatika světla, úseky dne, odmítnutí
   neplatných zápisů a~příkazů \\ \hline
 snímky obrazovek & 119 & vykreslení obrazovek ve všech důležitých stavech do obrázků \\ \hline
 doménová logika & 69 & úsek dne, prahy termostatu, texty světla a~chyb, český formát čísel \\ \hline
-Bluetooth LE & 46 & odstupy pokusů o~připojení, výběr domku po hledání, rozestup startů hledání,
+Bluetooth LE & 46 & odstupy pokusů o~připojení, výběr domu po hledání, rozestup startů hledání,
   kontrola MTU, oprávnění podle verze Androidu \\ \hline
 datový model & 39 & převod JSON, tolerance k~neznámým klíčům a~číslům jako \kod{50.0}, celá čísla
   v~zápisech bez desetinné tečky \\ \hline
@@ -77,7 +77,7 @@ procházejí ručně po každé změně vzhledu a~pocházejí z~nich i~snímky v
 
 Automaticky se neověřuje samotná komunikace s~Bluetooth zásobníkem Androidu, protože zpětná
 volání třídy \kod{BluetoothGatt} na JVM nefungují. Testy pokrývají logiku klienta Bluetooth LE,
-která na nich nezávisí, a~spojení se skutečným domkem se zkouší ručně.
+která na nich nezávisí, a~spojení se skutečným domem se zkouší ručně.
 
 \subsection{Ruční testy}
 
@@ -91,10 +91,12 @@ s~Androidem~14.
 
 \subsection{Test se skutečným Raspberry Pi}
 
-První společný test se skutečným Raspberry Pi ověřil, že se aplikace připojí s~MTU 517~B,
+První společný test se skutečným Raspberry Pi ověřil, že se aplikace připojí s~MTU 517,
 dostává notifikace Stavu každou sekundu a~zobrazuje živá data. Test ukázal tři odchylky na
-straně domku: vlhkost chodila jako 0, i~když čidlo BMP280 vlhkost neměří a~podle rozhraní má
-chodit \kod{null}, čidlo osvětlení TSL2561 se nenašlo a~hodiny Raspberry Pi šly asi o~2~minuty
-napřed. Zjištění se předala straně backendu. Po testu backend dodal závazný popis rozhraní
-(kapitola~\ref{chap:rozhrani}) a~aplikace se mu přizpůsobila, například v~názvu klíče pro
-rozsvícení při pohybu a~v~kódech poruch čidel.
+straně domu: vlhkost chodila jako 0, i~když čidlo BMP280 vlhkost neměří a~podle rozhraní má
+chodit \kod{null}, osvětlení chodilo jako \kod{null}, protože program počítal s~jiným čidlem,
+a~hodiny Raspberry Pi šly asi o~2~minuty napřed. Zjištění se předala straně backendu, která
+první dvě opravila (oddíl~\ref{sec:problemy-hw}). Rozdíl hodin aplikace ukazuje a~srovná ho
+příkazem \kod{cas}. Po testu backend dodal závazný popis rozhraní (kapitola~\ref{chap:rozhrani})
+a~aplikace se mu přizpůsobila, například v~názvu klíče pro rozsvícení při pohybu a~v~kódech
+poruch čidel.

@@ -65,7 +65,7 @@ i~na PC. Chyba hardwaru se ve všech ovladačích hlásí výjimkou \kod{OSError
 
 \begin{table}[H]
 \centering
-\caption{Moduly balíčku domek}
+\caption{Moduly balíčku \texttt{domek}}
 \label{tab:moduly}
 \small
 \begin{tabular}{|p{5.6cm}|p{7.9cm}|}
@@ -102,7 +102,7 @@ ostatní moduly v~\kod{hardware/} & ovladače BMP280, TSL2561, PIR, kontrolek, R
 Na Raspberry Pi běží celý program v~jednom vlákně, ve smyčce událostí GLib. Smyčku spouští
 knihovna bluezero, která v~ní obsluhuje i~volání od BlueZ přes D-Bus (čtení, zápisy, odběry
 a~připojení). Do stejné smyčky přidá funkce \kod{_spust_na_raspberry} dva časovače
-(výpis~\ref{lst:smycka}): časovač 1~s provede krok domku a~pošle stav, časovač 100~ms kontroluje
+(výpis~\ref{lst:smycka}): časovač 1~s provede krok domu a~pošle stav, časovač 100~ms kontroluje
 čidlo pohybu a~při změně pošle stav hned. Protože vše běží v~jednom vlákně, program nepotřebuje
 zámky. První krok proběhne ještě před zveřejněním periferie, takže tablet nikdy nedostane stav
 bez času a~měření.
@@ -125,7 +125,7 @@ server.spust()   # zveřejní služby a spustí smyčku GLib
 \end{lstlisting}
 
 Když funkce časovače vyhodí výjimku, GLib ji jen vypíše a~časovač zruší. Bluetooth by pak běžel
-dál, ale krok domku a~notifikace by stály. Proto je každá funkce časovače obalená funkcí
+dál, ale krok domu a~notifikace by stály. Proto je každá funkce časovače obalená funkcí
 \kod{opakuj} (výpis~\ref{lst:opakuj}). Při výjimce zapíše chybu i~s~výpisem volání do logu
 a~ukončí proces voláním \kod{os._exit(1)}, které skončí hned i~uprostřed smyčky GLib. Proces pak
 znovu spustí systemd (oddíl~\ref{sec:nasazeni}). Stejně končí program i~tehdy, když přijde
@@ -144,7 +144,7 @@ def opakuj(fn, ukonci=os._exit):
     return obal
 \end{lstlisting}
 
-\section{Jádro domku}
+\section{Jádro domu}
 \label{sec:jadro}
 
 Třída \kod{Domek} v~modulu \kod{jadro.py} drží nastavení, stav termostatu a~světla, poslední
@@ -191,10 +191,10 @@ nerozbije ani skok systémového času po nastavení z~tabletu.
 Metoda \kod{kontroluj_pohyb} přečte PIR a~vyhodnotí kontrolku pohybu (oddíl~\ref{sec:kontrolka}).
 Když se hodnota pohybu změnila, hned přepočítá světlo, aby se noční světlo rozsvítilo bez čekání
 na další krok, zruší stav \enquote{nikdo doma} a~vrátí \kod{True}. Měření, cíl a~stav termostatu
-ve stavu domku pocházejí z~posledního kroku. Pohyb a~světlo se mění hned po pohybu nebo příkazu
+ve stavu domu pocházejí z~posledního kroku. Pohyb a~světlo se mění hned po pohybu nebo příkazu
 a~režim termostatu se bere z~aktuálního nastavení.
 
-Porucha čidla, výstupu nebo ukládání nastavení domek nezastaví. Jádro výjimku \kod{OSError}
+Porucha čidla, výstupu nebo ukládání nastavení dům nezastaví. Jádro výjimku \kod{OSError}
 z~ovladače zachytí a~název poruchy (\kod{meteo}, \kod{osvetleni}, \kod{displej}, \kod{svetlo},
 \kod{nastaveni}) přidá do pole \kod{chyby} ve stavu; význam názvů popisuje
 tabulka~\ref{tab:chyby}. Jako porucha se bere i~měření, které není konečné číslo, protože NaN
@@ -283,7 +283,7 @@ Cíl $C$ určuje funkce \kod{aktivni_cil} podle režimu \kod{rezim_termostatu}:
         teplotu k~venkovní.
 \end{description}
 Stav \enquote{nikdo doma} nastane, když od posledního pohybu uplynulo aspoň
-\kod{nikdo_doma_po_min} minut (výchozí 30). Odpočet začíná při spuštění domku a~každé čtení PIR
+\kod{nikdo_doma_po_min} minut (výchozí 30). Odpočet začíná při spuštění domu a~každé čtení PIR
 s~pohybem ho začne znovu.
 
 \section{Logika světla}
@@ -384,7 +384,7 @@ pohybu svítí asi 13~s. Ve stavu pro tablet kontrolka není, je tam jen okamži
 
 Ovladače součástek na I\textsuperscript{2}C (BMP280, TSL2561, SSD1306) a~RGB LED v~konstruktoru
 na hardware nesahají. Sběrnici otevřou a~zařízení vytvoří až při prvním čtení nebo zápisu, takže
-součástka na I\textsuperscript{2}C, která při startu chybí, se ohlásí jen jako porucha a~domek ji
+součástka na I\textsuperscript{2}C, která při startu chybí, se ohlásí jen jako porucha a~dům ji
 v~každém kroku zkouší znovu. Sběrnice se otevře jen jednou a~zůstane otevřená, aby opakované pokusy nehromadily
 otevřené soubory. PIR a~kontrolky zaberou piny GPIO už v~konstruktoru; chyba GPIO u~nich ukončí
 program, který systemd spustí znovu.
@@ -532,7 +532,7 @@ světla pod klíčem \kod{svetlo_pri_pohybu}. Funkce \kod{nacti} ho převede na 
 Třída \kod{BleServer} v~modulu \kod{ble_server.py} vytvoří pomocí knihovny
 bluezero~\cite{bluezero} periferii \kod{Termostat} na prvním adaptéru, který BlueZ nabídne,
 se dvěma primárními službami: standardní Environmental Sensing Service (ESS) a~vlastní službou
-Domek (oddíl~\ref{sec:rozhrani-sluzby}). Metoda \kod{posli_stav} pošle notifikaci Stavu i~hodnot
+chytrého domu (oddíl~\ref{sec:rozhrani-sluzby}). Metoda \kod{posli_stav} pošle notifikaci Stavu i~hodnot
 ESS z~jednoho volání \kod{stav()}, ale jen odebíraným charakteristikám. Zápisy Nastavení
 a~Příkazu se zpracují hned v~obsluze zápisu a~server po nich pošle notifikace podle
 oddílu~\ref{sec:rozhrani-notifikace}; neplatný zápis zaloguje a~odmítne chybou protokolu ATT
@@ -544,8 +544,8 @@ Funkce \kod{_oprav_bluezero} při vytvoření serveru upraví čtyři vlastnosti
 částech z~téže hodnoty. Čtení ani zápis už nemění vlastnost \kod{Value}, kterou by BlueZ rozeslal
 jako nechtěnou notifikaci. Odmítnutá registrace služeb nebo inzerátu, zrušení inzerátu
 a~konec démona \kod{bluetoothd} se zalogují a~program skončí, aby ho systemd spustil znovu
-a~domek se zaregistroval znovu. Neočekávaná výjimka v~obsluze čtení, zápisu nebo odběru se
-zapíše do logu s~výpisem volání, klient dostane chybu a~domek běží dál.
+a~dům se zaregistroval znovu. Neočekávaná výjimka v~obsluze čtení, zápisu nebo odběru se
+zapíše do logu s~výpisem volání, klient dostane chybu a~dům běží dál.
 
 \section{Nasazení}
 \label{sec:nasazeni}
@@ -594,12 +594,12 @@ WantedBy=multi-user.target
 
 Volby jednotky a~jejich důvody (význam voleb viz~\cite{systemd-unit}):
 \begin{description}
-  \item[\kod{After=} a~\kod{Wants=bluetooth.service}] domek potřebuje Bluetooth, takže se
-        spouští po něm.
-  \item[\kod{PartOf=bluetooth.service}] po restartu služby Bluetooth BlueZ registraci domku
-        zahodí, proto se zastavení a~restart Bluetooth přenáší i~na domek. Silnější
+  \item[\kod{After=} a~\kod{Wants=bluetooth.service}] služba \kod{domek} potřebuje Bluetooth,
+        takže se spouští po něm.
+  \item[\kod{PartOf=bluetooth.service}] po restartu služby Bluetooth BlueZ registraci domu
+        zahodí, proto se zastavení a~restart Bluetooth přenáší i~na službu \kod{domek}. Silnější
         \kod{BindsTo=} tu záměrně není: kdyby se služba Bluetooth při startu přeskočila, protože
-        se adaptér objevil později, zastavila by domek natrvalo.
+        se adaptér objevil později, zastavila by službu \kod{domek} natrvalo.
   \item[\kod{Restart=always}, \kod{RestartSec=2}] po každém konci programu ho systemd za 2~s
         spustí znovu; tak se léčí i~pozdní start Bluetooth, při kterém se registrace nepovede
         a~program skončí.
@@ -615,10 +615,10 @@ na druhé adrese.
 \section{Simulace na PC a~zkoušky součástek}
 \label{sec:simulace}
 
-Příkaz \kod{python -m domek --simulace} spustí domek na PC se simulovaným hardwarem z~modulu
+Příkaz \kod{python -m domek --simulace} spustí dům na PC se simulovaným hardwarem z~modulu
 \kod{hardware/simulace.py}. Čidla mají pevné hodnoty: venku 22~°C, vlhkost 45~\%, tlak
 1013,25~hPa a~osvětlení 200~lx; Bluetooth ani skutečný displej v~simulaci nejsou. Simulace běží
-ve smyčce po 100~ms: v~každé pauze se zkontroluje pohyb a~po deseti pauzách proběhne krok domku
+ve smyčce po 100~ms: v~každé pauze se zkontroluje pohyb a~po deseti pauzách proběhne krok domu
 a~stav se vypíše jako jeden řádek JSON se stejnými klíči jako Stav v~BLE. Kromě
 \kod{--simulace} má program tři volby: \kod{--sekund N} (jen v~simulaci, skončí po N krocích,
 jinak běží do Ctrl+C), \kod{--nastaveni CESTA} (soubor s~nastavením, výchozí
@@ -626,7 +626,7 @@ jinak běží do Ctrl+C), \kod{--nastaveni CESTA} (soubor s~nastavením, výchoz
 a~\kod{--bme280-adresa ADRESA} (výchozí \kod{0x76}). Zkrácené volby program odmítá.
 
 Modul \kod{over_soucastky} zkouší na Raspberry Pi každou součástku zvlášť, bez zbytku programu
-a~se stejnými ovladači, jaké používá domek, takže ověří i~je. Šest zkoušek (\kod{bme280},
+a~se stejnými ovladači, jaké používá dům, takže ověří i~je. Šest zkoušek (\kod{bme280},
 \kod{pir}, \kod{led}, \kod{displej}, \kod{tsl2561} a~\kod{rgb}) a~jejich výsledky na hardwaru
 popisuje tabulka~\ref{tab:hw-vysledky}. Před zkouškami \kod{pir}, \kod{led} a~\kod{rgb} se musí
 služba zastavit, protože program drží piny GPIO výhradně. U~zkoušek \kod{bme280}

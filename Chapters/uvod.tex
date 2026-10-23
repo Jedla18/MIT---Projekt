@@ -10,8 +10,8 @@ a~v~ní komplexní komunikaci přes Bluetooth Low Energy (BLE). U~komplexní kom
 klade důraz především na funkčnost; příklady uvádí sběr dat ze senzorů přes BLE a~vizualizaci
 řídicí technologie přes Bluetooth.
 
-Cílem projektu je \emph{chytrý domek}: malá simulace chytré domácnosti, kterou řídí Raspberry Pi
-a~kterou uživatel sleduje a~ovládá z~tabletu. Domek měří skutečnou teplotu, tlak, osvětlení
+Cílem projektu je \emph{chytrý dům}: malá simulace chytré domácnosti, kterou řídí Raspberry Pi
+a~kterou uživatel sleduje a~ovládá z~tabletu. Dům měří skutečnou teplotu, tlak, osvětlení
 a~pohyb, simuluje vnitřní teplotu domu s~termostatem, který topí a~chladí, automaticky rozsvěcí
 barevné světlo podle denní doby, šera a~pohybu a~svůj stav ukazuje na malém displeji
 a~kontrolkách. Tablet přes BLE zobrazuje stav, mění nastavení a~posílá příkazy, například
@@ -21,8 +21,8 @@ topení ani vypínače na zdech a~celý se napájí z~Raspberry Pi.
 Práce má dvě části, které spojuje přesně popsané komunikační rozhraní:
 \begin{itemize}
   \item \textbf{backend} -- program v~Pythonu na Raspberry Pi, který obsluhuje čidla a~výstupy,
-        řídí logiku domku a~vystupuje jako periferie BLE,
-  \item \textbf{frontend} -- mobilní aplikace v~Kotlinu pro Android, která se k~domku připojuje
+        řídí logiku domu a~vystupuje jako periferie BLE,
+  \item \textbf{frontend} -- mobilní aplikace v~Kotlinu pro Android, která se k~domu připojuje
         jako klient BLE.
 \end{itemize}
 
